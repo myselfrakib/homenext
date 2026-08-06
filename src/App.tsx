@@ -23,6 +23,8 @@ interface Listing {
   postedByAvatar: string
   verified: boolean
   description: string
+  lat?: number
+  lng?: number
 }
 
 interface Conversation {
@@ -2009,6 +2011,51 @@ function OnboardingScreen({ onDone }: { onDone: () => void }) {
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 
+function mapDatabaseListing(key: string, raw: any): Listing {
+  const photos = raw.photos || []
+  const publicLocation = raw.publicLocation || {}
+  const exactLocation = raw.exactLocation || {}
+  
+  const amenities = Array.isArray(raw.amenities) ? raw.amenities : []
+  const tags = Array.isArray(raw.tags) ? raw.tags : []
+  const combinedTags = [...amenities, ...tags]
+  if (raw.furnishing) {
+    const furn = raw.furnishing.charAt(0).toUpperCase() + raw.furnishing.slice(1)
+    if (!combinedTags.includes(furn)) {
+      combinedTags.push(furn)
+    }
+  }
+
+  let bedrooms = 1
+  if (raw.roomCount) {
+    bedrooms = parseInt(raw.roomCount) || 1
+  } else if (raw.bedrooms) {
+    bedrooms = parseInt(raw.bedrooms) || 1
+  } else if (raw.bhkType) {
+    bedrooms = parseInt(raw.bhkType) || 1
+  }
+
+  return {
+    id: key || raw.id || String(Date.now()),
+    title: raw.title || "Untitled Space",
+    area: publicLocation.locality || raw.area || "Kestopur",
+    town: publicLocation.city || raw.town || "Kolkata",
+    rent: Number(raw.rent) || 0,
+    bedrooms,
+    bathrooms: Number(raw.bathrooms) || 1,
+    sqft: Number(raw.sqft) || 500,
+    tags: combinedTags,
+    imageUrl: photos[0] || raw.imageUrl || "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&h=400&fit=crop&auto=format",
+    available: raw.availableFrom || raw.available || "Immediate",
+    postedBy: raw.posterName || raw.ownerName || raw.postedBy || "Owner",
+    postedByAvatar: raw.postedByAvatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&h=80&fit=crop&auto=format",
+    verified: !!raw.verified,
+    description: raw.description || "",
+    lat: exactLocation.lat || raw.lat,
+    lng: exactLocation.lng || raw.lng,
+  }
+}
+
 export default function App() {
   const [onboarded, setOnboarded] = useState(false)
   const [screen, setScreen] = useState<Screen>('home')
@@ -2043,7 +2090,11 @@ export default function App() {
     const listingsRef = ref(db, 'listings')
     const unsubscribe = onValue(listingsRef, (snapshot) => {
       if (snapshot.exists()) {
-        setListings(Object.values(snapshot.val()))
+        const rawData = snapshot.val()
+        const mapped = Object.entries(rawData)
+          .filter(([_, raw]: [string, any]) => raw && raw.status !== 'draft')
+          .map(([key, raw]: [string, any]) => mapDatabaseListing(key, raw))
+        setListings(mapped)
       } else {
         setListings([])
       }
@@ -2225,9 +2276,10 @@ export default function App() {
                 }
               }
 
-              const newListing: Listing = {
+              const newListing: Listing & { status: string } = {
                 id: newListingRef.key || Date.now().toString(),
                 ...newListingData,
+                status: 'active',
                 lat: coords[0],
                 lng: coords[1],
                 verified: false,
