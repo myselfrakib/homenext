@@ -1906,8 +1906,8 @@ function ProfileScreen({
             className="w-full h-full object-cover"
           />
         </div>
-        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, color: '#141414' }}>{name || 'Guest User'}</h2>
-        <p className="text-sm" style={{ color: '#7a7570' }}>{phone || 'No phone number'} · Member since Aug 2026</p>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, color: '#141414' }}>{userProfile?.name || name || user?.displayName || 'User'}</h2>
+        <p className="text-sm" style={{ color: '#7a7570' }}>{userProfile?.phone || phone || 'No phone number'} {(userProfile?.email || user?.email) ? `· ${userProfile?.email || user?.email}` : ''}</p>
         <div className="inline-flex items-center gap-1 mt-2 text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: '#eaf2ec', color: '#1a3d2b' }}>
           <VerifiedIcon /> {user?.isAnonymous ? 'Guest session' : 'Verified profile'}
         </div>
@@ -2974,9 +2974,9 @@ export default function App() {
             setUserProfile(snapshot.data())
           } else {
             const defaultProfile = {
-              name: authUser.displayName || 'Kabir Singh',
-              avatar: authUser.photoURL || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=160&h=160&fit=crop&auto=format',
-              phone: '+91 98765 43210',
+              name: authUser.displayName || (authUser.email ? authUser.email.split('@')[0] : 'User'),
+              avatar: authUser.photoURL || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=160&h=160&fit=crop&auto=format',
+              phone: authUser.phoneNumber || '',
               email: authUser.email || '',
               joined: 'Aug 2026'
             }
