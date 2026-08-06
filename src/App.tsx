@@ -324,13 +324,24 @@ const StarIcon = () => (
 
 function FeaturedCard({ listing, onClick }: { listing: Listing; onClick: () => void }) {
   const [saved, setSaved] = useState(false)
+  const images = (listing.media && listing.media.filter((m: any) => m.type === 'image').map((m: any) => m.url)) || [listing.imageUrl]
+  const [imgIdx, setImgIdx] = useState(0)
+
+  useEffect(() => {
+    if (images.length <= 1) return
+    const timer = setInterval(() => {
+      setImgIdx(i => (i + 1) % images.length)
+    }, 5000)
+    return () => clearInterval(timer)
+  }, [images.length])
+
   return (
     <div
       onClick={onClick}
       className="relative shrink-0 rounded-3xl overflow-hidden cursor-pointer active:scale-[0.97] transition-transform"
       style={{ width: 260, height: 360, boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}
     >
-      <img src={listing.imageUrl} alt={listing.title} className="w-full h-full object-cover" />
+      <img src={images[imgIdx]} alt={listing.title} className="w-full h-full object-cover transition-all duration-700" />
       {/* Gradient */}
       <div className="absolute inset-0" style={{ background: 'linear-gradient(160deg, transparent 30%, rgba(10,20,14,0.85) 100%)' }} />
 
@@ -396,6 +407,17 @@ function FeaturedCard({ listing, onClick }: { listing: Listing; onClick: () => v
 
 function CompactCard({ listing, onClick }: { listing: Listing; onClick: () => void }) {
   const [saved, setSaved] = useState(false)
+  const images = (listing.media && listing.media.filter((m: any) => m.type === 'image').map((m: any) => m.url)) || [listing.imageUrl]
+  const [imgIdx, setImgIdx] = useState(0)
+
+  useEffect(() => {
+    if (images.length <= 1) return
+    const timer = setInterval(() => {
+      setImgIdx(i => (i + 1) % images.length)
+    }, 5000)
+    return () => clearInterval(timer)
+  }, [images.length])
+
   return (
     <div
       onClick={onClick}
@@ -403,7 +425,7 @@ function CompactCard({ listing, onClick }: { listing: Listing; onClick: () => vo
       style={{ width: 185, boxShadow: '0 2px 12px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)' }}
     >
       <div className="relative" style={{ height: 130 }}>
-        <img src={listing.imageUrl} alt={listing.title} className="w-full h-full object-cover bg-stone-100" />
+        <img src={images[imgIdx]} alt={listing.title} className="w-full h-full object-cover bg-stone-100 transition-all duration-700" />
         <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.3) 0%, transparent 50%)' }} />
         <button
           onClick={e => { e.stopPropagation(); setSaved(s => !s) }}
@@ -440,6 +462,17 @@ function CompactCard({ listing, onClick }: { listing: Listing; onClick: () => vo
 
 function ListingCard({ listing, onClick }: { listing: Listing; onClick: () => void }) {
   const [saved, setSaved] = useState(false)
+  const images = (listing.media && listing.media.filter((m: any) => m.type === 'image').map((m: any) => m.url)) || [listing.imageUrl]
+  const [imgIdx, setImgIdx] = useState(0)
+
+  useEffect(() => {
+    if (images.length <= 1) return
+    const timer = setInterval(() => {
+      setImgIdx(i => (i + 1) % images.length)
+    }, 5000)
+    return () => clearInterval(timer)
+  }, [images.length])
+
   return (
     <div
       onClick={onClick}
@@ -448,7 +481,7 @@ function ListingCard({ listing, onClick }: { listing: Listing; onClick: () => vo
     >
       {/* Image */}
       <div className="relative shrink-0" style={{ width: 130, height: 130 }}>
-        <img src={listing.imageUrl} alt={listing.title} className="w-full h-full object-cover bg-stone-100" />
+        <img src={images[imgIdx]} alt={listing.title} className="w-full h-full object-cover bg-stone-100 transition-all duration-700" />
         <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, transparent 50%, rgba(0,0,0,0.2) 100%)' }} />
         <span
           className="absolute bottom-2 left-2 text-white text-xs font-bold px-1.5 py-0.5 rounded-full"
@@ -695,12 +728,49 @@ function ListingDetailScreen({
   onBack: () => void
   onChat: () => void
 }) {
+  const galleryRef = useRef<HTMLDivElement>(null)
+  const [galleryIdx, setGalleryIdx] = useState(0)
+  const mediaCount = listing.media?.length || 0
+
+  useEffect(() => {
+    if (mediaCount <= 1) return
+    const timer = setInterval(() => {
+      setGalleryIdx(i => {
+        const next = (i + 1) % mediaCount
+        if (galleryRef.current) {
+          const width = galleryRef.current.clientWidth
+          galleryRef.current.scrollTo({
+            left: next * width,
+            behavior: 'smooth'
+          })
+        }
+        return next
+      })
+    }, 5000)
+    return () => clearInterval(timer)
+  }, [mediaCount])
+
+  const handleScroll = () => {
+    if (galleryRef.current) {
+      const scrollLeft = galleryRef.current.scrollLeft
+      const width = galleryRef.current.clientWidth
+      if (width > 0) {
+        const idx = Math.round(scrollLeft / width)
+        setGalleryIdx(idx)
+      }
+    }
+  }
+
   return (
     <div className="flex flex-col h-full bg-white">
       {/* Hero image */}
       <div className="relative" style={{ height: 260 }}>
         {listing.media && listing.media.length > 0 ? (
-          <div className="w-full h-full flex overflow-x-auto snap-x snap-mandatory">
+          <div 
+            ref={galleryRef}
+            onScroll={handleScroll}
+            className="w-full h-full flex overflow-x-auto snap-x snap-mandatory"
+          >
             {listing.media.map((item: any, idx: number) => (
               <div key={idx} className="w-full h-full shrink-0 snap-start relative">
                 {item.type === 'video' ? (
@@ -840,6 +910,7 @@ function FormField({ label, children }: { label: string; children: React.ReactNo
 
 function CreateScreen({ onClose, onPublish }: { onClose: () => void; onPublish: (data: any) => Promise<void> }) {
   const [step, setStep] = useState(1)
+  const [publishing, setPublishing] = useState(false)
   const [form, setForm] = useState({
     title: '',
     street: '',
@@ -1205,39 +1276,46 @@ function CreateScreen({ onClose, onPublish }: { onClose: () => void; onPublish: 
         )}
         <button
           onClick={async () => {
-            if (!isStepValid()) return
+            if (!isStepValid() || publishing) return
             if (step < 3) {
               setStep(s => s + 1)
             } else {
-              const firstImage = mediaFiles.find(m => m.type === 'image')?.url
-              const formattedListing = {
-                title: form.title,
-                area: form.town,
-                town: form.district,
-                rent: parseInt(form.rent) || 0,
-                bedrooms: parseInt(form.bedrooms) || 1,
-                bathrooms: parseInt(form.bathrooms) || 1,
-                floor: form.floor || 'Ground',
-                tags: form.tags,
-                imageUrl: firstImage || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&h=400&fit=crop&auto=format',
-                available: form.available ? `From ${new Date(form.available).toLocaleDateString([], {month: 'short', day: 'numeric'})}` : 'Immediate',
-                description: form.description,
-                media: mediaFiles,
-                lat: form.lat,
-                lng: form.lng
+              setPublishing(true)
+              try {
+                const firstImage = mediaFiles.find(m => m.type === 'image')?.url
+                const formattedListing = {
+                  title: form.title,
+                  area: form.town,
+                  town: form.district,
+                  rent: parseInt(form.rent) || 0,
+                  bedrooms: parseInt(form.bedrooms) || 1,
+                  bathrooms: parseInt(form.bathrooms) || 1,
+                  floor: form.floor || 'Ground',
+                  tags: form.tags,
+                  imageUrl: firstImage || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&h=400&fit=crop&auto=format',
+                  available: form.available ? `From ${new Date(form.available).toLocaleDateString([], {month: 'short', day: 'numeric'})}` : 'Immediate',
+                  description: form.description,
+                  media: mediaFiles,
+                  lat: form.lat,
+                  lng: form.lng
+                }
+                await onPublish(formattedListing)
+              } catch (err) {
+                console.error(err)
+              } finally {
+                setPublishing(false)
               }
-              await onPublish(formattedListing)
             }
           }}
-          disabled={!isStepValid()}
+          disabled={!isStepValid() || publishing}
           className="flex-1 py-3 rounded-xl text-sm font-semibold text-white active:scale-95 transition-transform"
           style={{ 
             background: '#1a3d2b',
-            opacity: isStepValid() ? 1 : 0.5,
-            cursor: isStepValid() ? 'pointer' : 'not-allowed'
+            opacity: (isStepValid() && !publishing) ? 1 : 0.5,
+            cursor: (isStepValid() && !publishing) ? 'pointer' : 'not-allowed'
           }}
         >
-          {step < 3 ? 'Continue' : 'Publish listing'}
+          {publishing ? 'Publishing...' : step < 3 ? 'Continue' : 'Publish listing'}
         </button>
       </div>
     </div>
