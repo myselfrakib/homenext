@@ -4051,6 +4051,7 @@ export default function App() {
 
   const handleOnboardingDone = () => {
     localStorage.setItem('nestly_onboarded', 'true')
+    sessionStorage.setItem('nestly_current_screen', 'auth')
     setOnboarded(true)
     setScreen('auth')
   }
