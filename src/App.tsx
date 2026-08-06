@@ -1761,6 +1761,8 @@ function ChatDetailScreen({ conv, onBack, user }: { conv: Conversation; onBack: 
       list.sort((a, b) => a.id.localeCompare(b.id))
       setMessages(list)
       setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+    }, (error) => {
+      console.warn("Messages snapshot listener error:", error)
     })
     return () => unsubscribe()
   }, [conv.id])
@@ -3839,6 +3841,8 @@ export default function App() {
         })
         .map(docSnap => mapDatabaseListing(docSnap.id, docSnap.data()))
       setListings(list)
+    }, (error) => {
+      console.warn("Listings snapshot listener error:", error)
     })
     return () => unsubscribe()
   }, [])
@@ -3850,9 +3854,18 @@ export default function App() {
         sessionStorage.setItem('nestly_auth_type', 'real')
         setUser(authUser)
         
-        const adminDocRef = doc(firestore, 'admins', authUser.uid)
-        const adminDoc = await getDoc(adminDocRef)
-        if (adminDoc.exists() && adminDoc.data()?.isAdmin === true) {
+        let isAdminUser = false
+        try {
+          const adminDocRef = doc(firestore, 'admins', authUser.uid)
+          const adminDoc = await getDoc(adminDocRef)
+          if (adminDoc.exists() && adminDoc.data()?.isAdmin === true) {
+            isAdminUser = true
+          }
+        } catch (err) {
+          console.warn("Failed to fetch admin status during state change:", err)
+        }
+
+        if (isAdminUser) {
           setIsAdmin(true)
           setScreen('admin-dashboard')
         } else {
@@ -3872,6 +3885,8 @@ export default function App() {
               setDoc(profileDocRef, defaultProfile)
               setUserProfile(defaultProfile)
             }
+          }, (error) => {
+            console.warn("Profile snapshot listener error:", error)
           })
         }
       } else {
@@ -3890,6 +3905,8 @@ export default function App() {
             if (snapshot.exists()) {
               setUserProfile(snapshot.data())
             }
+          }, (error) => {
+            console.warn("Simulated user profile snapshot listener error:", error)
           })
         } else {
           const guestUser = getOrCreateGuestUser()
@@ -3916,6 +3933,8 @@ export default function App() {
     const unsubscribe = onSnapshot(convsCol, (snapshot) => {
       const list = snapshot.docs.map(doc => doc.data() as Conversation)
       setConversations(list)
+    }, (error) => {
+      console.warn("Conversations listener error/denied:", error)
     })
     return () => unsubscribe()
   }, [user])
@@ -3933,6 +3952,8 @@ export default function App() {
           await setDoc(doc(firestore, 'chats', 'c1', 'messages', m.id), m)
         })
       }
+    }).catch(err => {
+      console.warn("Conversations pre-fetch warning:", err)
     })
   }, [user])
 
