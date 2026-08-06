@@ -3851,24 +3851,31 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
       if (authUser) {
         sessionStorage.setItem('nestly_user_uid', authUser.uid)
-        sessionStorage.setItem('nestly_auth_type', 'real')
+        const currentAuthType = sessionStorage.getItem('nestly_auth_type')
+        const isCurrentlyAdmin = currentAuthType === 'admin'
         setUser(authUser)
         
         let isAdminUser = false
-        try {
-          const adminDocRef = doc(firestore, 'admins', authUser.uid)
-          const adminDoc = await getDoc(adminDocRef)
-          if (adminDoc.exists() && adminDoc.data()?.isAdmin === true) {
-            isAdminUser = true
+        if (isCurrentlyAdmin) {
+          try {
+            // Give 100ms for Firebase Auth token to sync with Firestore
+            await new Promise(resolve => setTimeout(resolve, 100))
+            const adminDocRef = doc(firestore, 'admins', authUser.uid)
+            const adminDoc = await getDoc(adminDocRef)
+            if (adminDoc.exists() && adminDoc.data()?.isAdmin === true) {
+              isAdminUser = true
+            }
+          } catch (err) {
+            console.warn("Failed to fetch admin status during state change:", err)
           }
-        } catch (err) {
-          console.warn("Failed to fetch admin status during state change:", err)
         }
 
         if (isAdminUser) {
+          sessionStorage.setItem('nestly_auth_type', 'admin')
           setIsAdmin(true)
           setScreen('admin-dashboard')
         } else {
+          sessionStorage.setItem('nestly_auth_type', 'real')
           setIsAdmin(false)
           const profileDocRef = doc(firestore, 'profiles', authUser.uid)
           onSnapshot(profileDocRef, (snapshot) => {
@@ -4008,6 +4015,8 @@ export default function App() {
     const adminDocRef = doc(firestore, 'admins', credentials.user.uid)
     const adminDoc = await getDoc(adminDocRef)
     if (adminDoc.exists() && adminDoc.data()?.isAdmin === true) {
+      sessionStorage.setItem('nestly_user_uid', credentials.user.uid)
+      sessionStorage.setItem('nestly_auth_type', 'admin')
       setIsAdmin(true)
       setUser(credentials.user)
       setScreen('admin-dashboard')
