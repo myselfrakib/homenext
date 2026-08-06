@@ -2526,21 +2526,7 @@ export default function App() {
     return { isAnonymous: true, uid: guestUid, displayName: 'Guest User' }
   }
 
-  useEffect(() => {
-    const listingsCol = collection(firestore, 'listings')
-    getDocs(listingsCol).then((snapshot) => {
-      if (snapshot.empty) {
-        LISTINGS.forEach(async (l) => {
-          const coords = LISTING_COORDS[l.id] || [19.0760, 72.8777]
-          await setDoc(doc(firestore, 'listings', l.id), {
-            ...l,
-            lat: coords[0],
-            lng: coords[1]
-          })
-        })
-      }
-    })
-  }, [])
+
 
   useEffect(() => {
     const listingsCol = collection(firestore, 'listings')
