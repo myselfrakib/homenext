@@ -1648,6 +1648,23 @@ function ExploreScreen({ listings, onListingClick }: { listings: Listing[]; onLi
     }
   }, [])
 
+  useEffect(() => {
+    if (!mapLoaded) return
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const coords: [number, number] = [position.coords.latitude, position.coords.longitude]
+          setCenter(coords)
+          setRadius(2500) // Set a fresh default radius (2.5 km) around the live location
+        },
+        (err) => {
+          console.warn("User location access failed or denied. Using default center.", err)
+        },
+        { enableHighAccuracy: true, timeout: 8000 }
+      )
+    }
+  }, [mapLoaded])
+
   const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
     const R = 6371e3 // metres
     const phi1 = lat1 * Math.PI/180
