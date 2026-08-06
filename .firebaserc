@@ -1,5 +1,15 @@
 {
   "projects": {
     "default": "smoothshift-a734f"
-  }
+  },
+  "targets": {
+    "smoothshift-a734f": {
+      "storage": {
+        "rules": [
+          "smoothshift-a734f.firebasestorage.app"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

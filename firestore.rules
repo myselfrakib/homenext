@@ -46,7 +46,7 @@ service cloud.firestore {
     // Since conversation IDs are formatted as `conv_{listingId}_{userUid}`, we can check if the user is the creator.
     match /chats/{chatId} {
       allow read, write: if isAuthenticated() && (
-        chatId.endsWith(request.auth.uid) || 
+        chatId.matches('.*' + request.auth.uid) || 
         resource.data.ownerId == request.auth.uid
       );
 
