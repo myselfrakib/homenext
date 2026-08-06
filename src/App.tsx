@@ -1,7 +1,26 @@
 import { useState, useRef, useEffect } from 'react'
 import { auth, firestore } from './firebase'
-import { signInAnonymously, onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
+import { onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc, onSnapshot } from 'firebase/firestore'
+
+const getOrCreateGuestUser = () => {
+  let guest = sessionStorage.getItem('nestly_guest_user')
+  if (guest) {
+    try {
+      return JSON.parse(guest)
+    } catch (e) {}
+  }
+  const newGuest = {
+    uid: 'guest_' + Math.random().toString(36).substring(2, 11),
+    isAnonymous: true,
+    displayName: 'Guest User',
+    photoURL: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=160&h=160&fit=crop&auto=format',
+    email: ''
+  }
+  sessionStorage.setItem('nestly_guest_user', JSON.stringify(newGuest))
+  return newGuest
+}
+
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -2175,12 +2194,6 @@ function mapDatabaseListing(key: string, raw: any): Listing {
     bathrooms: Number(raw.bathrooms) || 1,
     sqft: Number(raw.sqft) || 500,
     tags: combinedTags,
-    imageUrl: photos[0] || raw.imageUrl || "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&h=400&fit=crop&auto=format",
-    available: raw.availableFrom || raw.available || "Immediate",
-    postedBy: raw.posterName || raw.ownerName || raw.postedBy || "Owner",
-    postedByAvatar: raw.postedByAvatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&h=80&fit=crop&auto=format",
-    verified: !!raw.verified,
-    description: raw.description || "",
     lat: exactLocation.lat || raw.lat,
     lng: exactLocation.lng || raw.lng,
   }
@@ -2197,6 +2210,14 @@ export default function App() {
   const [userProfile, setUserProfile] = useState<any>(null)
   const [listings, setListings] = useState<Listing[]>([])
   const [conversations, setConversations] = useState<Conversation[]>([])
+
+  const getOrCreateGuestUser = () => {
+    const stored = sessionStorage.getItem('nestly_guest_user')
+    if (stored) return JSON.parse(stored)
+    const guest = { isAnonymous: true, uid: 'guest_' + Date.now() }
+    sessionStorage.setItem('nestly_guest_user', JSON.stringify(guest))
+    return guest
+  }
 
   useEffect(() => {
     const listingsCol = collection(firestore, 'listings')
@@ -2231,6 +2252,7 @@ export default function App() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
       if (authUser) {
+        sessionStorage.removeItem('nestly_guest_user')
         setUser(authUser)
         const profileDocRef = doc(firestore, 'profiles', authUser.uid)
         onSnapshot(profileDocRef, (snapshot) => {
@@ -2249,18 +2271,22 @@ export default function App() {
           }
         })
       } else {
-        setUser(null)
-        setUserProfile(null)
-        if (onboarded) {
-          signInAnonymously(auth).catch(err => console.error(err))
-        }
+        const guestUser = getOrCreateGuestUser()
+        setUser(guestUser)
+        setUserProfile({
+          name: 'Guest User',
+          avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=160&h=160&fit=crop&auto=format',
+          phone: 'None',
+          email: 'guest@nestly.com',
+          joined: 'Just now'
+        })
       }
     })
     return () => unsubscribe()
-  }, [onboarded])
+  }, [])
 
   useEffect(() => {
-    if (!user) {
+    if (!user || user.isAnonymous) {
       setConversations([])
       return
     }
@@ -2273,7 +2299,7 @@ export default function App() {
   }, [user])
 
   useEffect(() => {
-    if (!user) return
+    if (!user || user.isAnonymous) return
     const convsCol = collection(firestore, 'profiles', user.uid, 'conversations')
     getDocs(convsCol).then((snapshot) => {
       if (snapshot.empty) {
@@ -2289,7 +2315,7 @@ export default function App() {
   }, [user])
 
   const handleUpdateProfile = async (profileData: { name: string; phone: string; avatar: string }) => {
-    if (!user) return
+    if (!user || user.isAnonymous) return
     const profileRef = doc(firestore, 'profiles', user.uid)
     await updateDoc(profileRef, profileData)
     if (user.displayName !== profileData.name || user.photoURL !== profileData.avatar) {
@@ -2303,9 +2329,10 @@ export default function App() {
   const handleSignOut = async () => {
     try {
       await signOut(auth)
+      sessionStorage.removeItem('nestly_guest_user')
       setUser(null)
       setUserProfile(null)
-      setScreen('home')
+      setScreen('auth')
       setNavTab('home')
     } catch (err) {
       console.error(err)
@@ -2490,9 +2517,16 @@ export default function App() {
               setNavTab('home')
             }}
             onGuest={() => {
-              if (!user) {
-                signInAnonymously(auth).catch(err => console.error(err))
-              }
+              signOut(auth).catch(() => {})
+              const guestUser = getOrCreateGuestUser()
+              setUser(guestUser)
+              setUserProfile({
+                name: 'Guest User',
+                avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=160&h=160&fit=crop&auto=format',
+                phone: 'None',
+                email: 'guest@nestly.com',
+                joined: 'Just now'
+              })
               setScreen('home')
               setNavTab('home')
             }}
