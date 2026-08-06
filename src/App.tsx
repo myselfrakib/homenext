@@ -986,8 +986,13 @@ function ListingDetailScreen({
     }
   }
 
+  const isOwner = Boolean(
+    (userProfile?.name && listing.postedBy === userProfile.name) ||
+    (listing.postedByUid && userProfile?.uid && listing.postedByUid === userProfile.uid)
+  )
+
   const [unlockedState, setUnlockedState] = useState(false)
-  const unlocked = isUnlocked || unlockedState
+  const unlocked = isUnlocked || isOwner || unlockedState
 
   const handleTriggerPay = () => {
     setShowRazorpay(true)
@@ -1195,7 +1200,11 @@ function ListingDetailScreen({
               ₹{listing.rent.toLocaleString()}
             </p>
           </div>
-          {unlocked ? (
+          {isOwner ? (
+            <span className="px-4 py-2.5 rounded-xl bg-emerald-100 text-emerald-900 text-xs font-bold border border-emerald-200 flex items-center gap-1.5">
+              🏠 Your Listing
+            </span>
+          ) : unlocked ? (
             <button
               onClick={onChat}
               className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold text-white active:scale-95 transition-transform"
