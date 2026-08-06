@@ -1264,7 +1264,7 @@ function FormField({ label, children }: { label: string; children: React.ReactNo
   )
 }
 
-function CreateScreen({ onClose, onPublish }: { onClose: () => void; onPublish: (data: any) => Promise<void> }) {
+function CreateScreen({ onClose, onPublish, userProfile }: { onClose: () => void; onPublish: (data: any) => Promise<void>; userProfile?: any }) {
   const [step, setStep] = useState(1)
   const [publishing, setPublishing] = useState(false)
   const [form, setForm] = useState({
@@ -3296,6 +3296,7 @@ export default function App() {
         )}
         {screen === 'create' && (
           <CreateScreen 
+            userProfile={userProfile}
             onClose={() => { setScreen('home'); setNavTab('home') }} 
             onPublish={async (newListingData) => {
               const listingsCol = collection(firestore, 'listings')
