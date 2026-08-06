@@ -811,6 +811,15 @@ function ListingDetailScreen({
   )
 }
 
+function FormField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="mb-4">
+      <label className="block text-xs font-semibold mb-1.5" style={{ color: '#5a5550' }}>{label}</label>
+      {children}
+    </div>
+  )
+}
+
 function CreateScreen({ onClose, onPublish }: { onClose: () => void; onPublish: (data: any) => Promise<void> }) {
   const [step, setStep] = useState(1)
   const [form, setForm] = useState({
@@ -850,12 +859,7 @@ function CreateScreen({ onClose, onPublish }: { onClose: () => void; onPublish: 
     return true
   }
 
-  const F = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <div className="mb-4">
-      <label className="block text-xs font-semibold mb-1.5" style={{ color: '#5a5550' }}>{label}</label>
-      {children}
-    </div>
-  )
+  const F = FormField
 
   const inp = "w-full px-3 py-2.5 rounded-xl text-sm outline-none"
   const inpStyle = { background: '#fff', border: '1px solid #e2ddd8', color: '#141414' }
