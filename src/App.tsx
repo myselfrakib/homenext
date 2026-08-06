@@ -940,6 +940,7 @@ function ListingDetailScreen({
   onChat,
   isUnlocked,
   onUnlock,
+  user,
   userProfile
 }: {
   listing: Listing
@@ -947,6 +948,7 @@ function ListingDetailScreen({
   onChat: () => void
   isUnlocked: boolean
   onUnlock: (id: string) => void
+  user?: any
   userProfile?: any
 }) {
   const galleryRef = useRef<HTMLDivElement>(null)
@@ -988,7 +990,7 @@ function ListingDetailScreen({
 
   const isOwner = Boolean(
     (userProfile?.name && listing.postedBy === userProfile.name) ||
-    (listing.postedByUid && userProfile?.uid && listing.postedByUid === userProfile.uid)
+    (user?.uid && listing.postedByUid && listing.postedByUid === user.uid)
   )
 
   const [unlockedState, setUnlockedState] = useState(false)
@@ -3382,6 +3384,7 @@ export default function App() {
               listing={selectedListing}
               isUnlocked={Boolean(user?.uid && selectedListing.postedByUid && selectedListing.postedByUid === user.uid) || !!unlockedListings[selectedListing.id]}
               onUnlock={handleUnlockListing}
+              user={user}
               userProfile={userProfile}
               onBack={() => setScreen(navTab)}
               onChat={async () => {
