@@ -341,7 +341,19 @@ function FeaturedCard({ listing, onClick }: { listing: Listing; onClick: () => v
       className="relative shrink-0 rounded-3xl overflow-hidden cursor-pointer active:scale-[0.97] transition-transform"
       style={{ width: 260, height: 360, boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}
     >
-      <img src={images[imgIdx]} alt={listing.title} className="w-full h-full object-cover transition-all duration-700" />
+      <div 
+        className="w-full h-full flex transition-transform duration-700 ease-in-out" 
+        style={{ transform: `translateX(-${imgIdx * 100}%)` }}
+      >
+        {images.map((url, idx) => (
+          <img 
+            key={idx} 
+            src={url} 
+            alt={listing.title} 
+            className="w-full h-full object-cover shrink-0" 
+          />
+        ))}
+      </div>
       {/* Gradient */}
       <div className="absolute inset-0" style={{ background: 'linear-gradient(160deg, transparent 30%, rgba(10,20,14,0.85) 100%)' }} />
 
@@ -424,8 +436,20 @@ function CompactCard({ listing, onClick }: { listing: Listing; onClick: () => vo
       className="shrink-0 bg-white rounded-2xl overflow-hidden cursor-pointer active:scale-[0.97] transition-transform"
       style={{ width: 185, boxShadow: '0 2px 12px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)' }}
     >
-      <div className="relative" style={{ height: 130 }}>
-        <img src={images[imgIdx]} alt={listing.title} className="w-full h-full object-cover bg-stone-100 transition-all duration-700" />
+      <div className="relative overflow-hidden" style={{ height: 130 }}>
+        <div 
+          className="w-full h-full flex transition-transform duration-700 ease-in-out" 
+          style={{ transform: `translateX(-${imgIdx * 100}%)` }}
+        >
+          {images.map((url, idx) => (
+            <img 
+              key={idx} 
+              src={url} 
+              alt={listing.title} 
+              className="w-full h-full object-cover bg-stone-100 shrink-0" 
+            />
+          ))}
+        </div>
         <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.3) 0%, transparent 50%)' }} />
         <button
           onClick={e => { e.stopPropagation(); setSaved(s => !s) }}
@@ -480,8 +504,20 @@ function ListingCard({ listing, onClick }: { listing: Listing; onClick: () => vo
       style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.04)' }}
     >
       {/* Image */}
-      <div className="relative shrink-0" style={{ width: 130, height: 130 }}>
-        <img src={images[imgIdx]} alt={listing.title} className="w-full h-full object-cover bg-stone-100 transition-all duration-700" />
+      <div className="relative shrink-0 overflow-hidden" style={{ width: 130, height: 130 }}>
+        <div 
+          className="w-full h-full flex transition-transform duration-700 ease-in-out" 
+          style={{ transform: `translateX(-${imgIdx * 100}%)` }}
+        >
+          {images.map((url, idx) => (
+            <img 
+              key={idx} 
+              src={url} 
+              alt={listing.title} 
+              className="w-full h-full object-cover bg-stone-100 shrink-0" 
+            />
+          ))}
+        </div>
         <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, transparent 50%, rgba(0,0,0,0.2) 100%)' }} />
         <span
           className="absolute bottom-2 left-2 text-white text-xs font-bold px-1.5 py-0.5 rounded-full"
