@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from 'react'
-import { auth, db } from './firebase'
+import { auth, firestore } from './firebase'
 import { signInAnonymously, onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
-import { ref, onValue, set, push, update as dbUpdate, get, child } from 'firebase/database'
+import { collection, doc, getDoc, getDocs, setDoc, updateDoc, onSnapshot } from 'firebase/firestore'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type Screen = 'home' | 'explore' | 'create' | 'chat' | 'chat-detail' | 'profile' | 'listing-detail'
+type Screen = 'home' | 'explore' | 'create' | 'chat' | 'chat-detail' | 'profile' | 'listing-detail' | 'auth'
 
 interface Listing {
   id: string
@@ -1080,16 +1080,12 @@ function ChatDetailScreen({ conv, onBack, user }: { conv: Conversation; onBack: 
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const messagesRef = ref(db, `chats/${conv.id}/messages`)
-    const unsubscribe = onValue(messagesRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.val()
-        const list: Message[] = Object.values(data)
-        setMessages(list)
-        setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
-      } else {
-        setMessages([])
-      }
+    const messagesCol = collection(firestore, 'chats', conv.id, 'messages')
+    const unsubscribe = onSnapshot(messagesCol, (snapshot) => {
+      const list = snapshot.docs.map(doc => doc.data() as Message)
+      list.sort((a, b) => a.id.localeCompare(b.id))
+      setMessages(list)
+      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
     })
     return () => unsubscribe()
   }, [conv.id])
@@ -1106,11 +1102,12 @@ function ChatDetailScreen({ conv, onBack, user }: { conv: Conversation; onBack: 
       time: timeString
     }
     
-    await set(ref(db, `chats/${conv.id}/messages/${msgId}`), newMsg)
+    await setDoc(doc(firestore, 'chats', conv.id, 'messages', msgId), newMsg)
     
-    await dbUpdate(ref(db), {
-      [`conversations/${user.uid}/${conv.id}/lastMsg`]: text,
-      [`conversations/${user.uid}/${conv.id}/time`]: 'Just now'
+    const convRef = doc(firestore, 'profiles', user.uid, 'conversations', conv.id)
+    await updateDoc(convRef, {
+      lastMsg: text,
+      time: 'Just now'
     })
 
     setText('')
@@ -1180,8 +1177,7 @@ function ProfileScreen({
   conversations,
   onUpdateProfile,
   onSignOut,
-  onSignIn,
-  onSignUp
+  onAuthTrigger
 }: { 
   user: any; 
   userProfile: any; 
@@ -1189,18 +1185,14 @@ function ProfileScreen({
   conversations: Conversation[];
   onUpdateProfile: (profile: any) => Promise<void>;
   onSignOut: () => void;
-  onSignIn: (email: string, pass: string) => Promise<void>;
-  onSignUp: (email: string, pass: string, name: string, phone: string) => Promise<void>;
+  onAuthTrigger: () => void;
 }) {
   const [notifications, setNotifications] = useState(true)
   const [isEditMode, setIsEditMode] = useState(false)
-  const [authMode, setAuthMode] = useState<'none' | 'login' | 'signup'>('none')
   
   const [name, setName] = useState(userProfile?.name || '')
   const [phone, setPhone] = useState(userProfile?.phone || '')
   const [avatar, setAvatar] = useState(userProfile?.avatar || '')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
@@ -1224,28 +1216,6 @@ function ProfileScreen({
       setIsEditMode(false)
     } catch (e: any) {
       setError(e.message || 'Failed to update profile.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleAuthSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
-    setSuccess('')
-    try {
-      if (authMode === 'login') {
-        await onSignIn(email, password)
-        setSuccess('Logged in successfully!')
-        setAuthMode('none')
-      } else if (authMode === 'signup') {
-        await onSignUp(email, password, name, phone)
-        setSuccess('Account created and linked!')
-        setAuthMode('none')
-      }
-    } catch (e: any) {
-      setError(e.message || 'Authentication failed.')
     } finally {
       setLoading(false)
     }
@@ -1305,57 +1275,19 @@ function ProfileScreen({
         </div>
       )}
 
-      {user?.isAnonymous && authMode === 'none' && !isEditMode && (
+      {user?.isAnonymous && !isEditMode && (
         <div className="mx-4 mb-4 p-4 rounded-2xl bg-white border border-hairline">
           <p className="text-xs mb-3" style={{ color: '#7a7570' }}>
             You are currently signed in as a guest. Create an account to sync your active listings and chat logs.
           </p>
-          <div className="flex gap-2">
-            <button 
-              onClick={() => setAuthMode('login')}
-              className="flex-1 py-2 rounded-xl text-xs font-bold text-forest border"
-              style={{ borderColor: '#1a3d2b' }}
-            >
-              Sign In
-            </button>
-            <button 
-              onClick={() => setAuthMode('signup')}
-              className="flex-1 py-2 rounded-xl text-xs font-bold text-white"
-              style={{ background: '#1a3d2b' }}
-            >
-              Register
-            </button>
-          </div>
-        </div>
-      )}
-
-      {authMode !== 'none' && (
-        <form onSubmit={handleAuthSubmit} className="mx-4 mb-4 p-4 rounded-2xl bg-white border border-hairline">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-muted">
-              {authMode === 'login' ? 'Login' : 'Create Account'}
-            </h3>
-            <button type="button" onClick={() => setAuthMode('none')} className="text-xs text-stone-400">Cancel</button>
-          </div>
-          
-          {authMode === 'signup' && (
-            <>
-              <input className={inp} style={inpStyle} placeholder="Full Name" value={name} onChange={e => setName(e.target.value)} required />
-              <input className={inp} style={inpStyle} placeholder="Phone Number" value={phone} onChange={e => setPhone(e.target.value)} required />
-            </>
-          )}
-          <input className={inp} style={inpStyle} type="email" placeholder="Email Address" value={email} onChange={e => setEmail(e.target.value)} required />
-          <input className={inp} style={inpStyle} type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required />
-          
           <button 
-            type="submit"
-            disabled={loading}
-            className="w-full py-2.5 rounded-xl text-sm font-semibold text-white"
+            onClick={onAuthTrigger}
+            className="w-full py-2.5 rounded-xl text-sm font-bold text-white shadow-sm active:scale-98 transition-all"
             style={{ background: '#1a3d2b' }}
           >
-            {loading ? 'Authenticating...' : authMode === 'login' ? 'Sign In' : 'Register Account'}
+            Sign In / Register
           </button>
-        </form>
+        </div>
       )}
 
       {!isEditMode && authMode === 'none' && (
@@ -1373,7 +1305,7 @@ function ProfileScreen({
         </div>
       )}
 
-      {!isEditMode && authMode === 'none' && (
+      {!isEditMode && (
         <div className="px-4 mb-4">
           <p className="text-xs font-semibold mb-2" style={{ color: '#5a5550' }}>My active listings</p>
           {myListings.length === 0 ? (
@@ -1393,7 +1325,7 @@ function ProfileScreen({
         </div>
       )}
 
-      {!isEditMode && authMode === 'none' && (
+      {!isEditMode && (
         <div className="px-4 mb-8">
           <p className="text-xs font-semibold mb-2" style={{ color: '#5a5550' }}>Settings</p>
           <div className="bg-white rounded-2xl overflow-hidden" style={{ border: '1px solid #e2ddd8' }}>
@@ -1436,6 +1368,195 @@ function ProfileScreen({
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+function AuthScreen({
+  onSignIn,
+  onSignUp,
+  onGuest,
+  onClose
+}: {
+  onSignIn: (email: string, pass: string) => Promise<void>
+  onSignUp: (email: string, pass: string, name: string, phone: string) => Promise<void>
+  onGuest: () => void
+  onClose?: () => void
+}) {
+  const [isLogin, setIsLogin] = useState(true)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [name, setName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+    try {
+      if (isLogin) {
+        await onSignIn(email, password)
+      } else {
+        if (!name.trim() || !phone.trim()) {
+          throw new Error('Name and phone number are required.')
+        }
+        await onSignUp(email, password, name, phone)
+      }
+    } catch (err: any) {
+      setError(err.message || 'Authentication failed. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col h-full bg-[#f7f5f1] overflow-y-auto px-6 py-12 justify-center">
+      {onClose && (
+        <button 
+          onClick={onClose} 
+          className="absolute top-12 left-4 w-9 h-9 rounded-full bg-white border border-[#e2ddd8] flex items-center justify-center text-stone-500 hover:text-stone-700 active:scale-95 transition-transform"
+        >
+          <BackIcon />
+        </button>
+      )}
+
+      <div className="w-full max-w-sm mx-auto">
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-[#1a3d2b] rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-[#1a3d2b]/20">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+          </div>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 700, color: '#141414' }}>
+            Nestly
+          </h2>
+          <p className="text-xs mt-1" style={{ color: '#7a7570' }}>
+            Your portal to verified spaces
+          </p>
+        </div>
+
+        <div className="flex bg-[#e2ddd8] p-1 rounded-2xl mb-6">
+          <button
+            type="button"
+            onClick={() => { setIsLogin(true); setError(''); }}
+            className="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all"
+            style={isLogin ? { background: '#1a3d2b', color: '#fff', boxShadow: '0 2px 8px rgba(26,61,43,0.15)' } : { color: '#5a5550' }}
+          >
+            Sign In
+          </button>
+          <button
+            type="button"
+            onClick={() => { setIsLogin(false); setError(''); }}
+            className="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all"
+            style={!isLogin ? { background: '#1a3d2b', color: '#fff', boxShadow: '0 2px 8px rgba(26,61,43,0.15)' } : { color: '#5a5550' }}
+          >
+            Create Account
+          </button>
+        </div>
+
+        {error && (
+          <div className="p-3 mb-4 rounded-xl text-xs font-semibold animate-shake" style={{ background: '#fdf0e8', color: '#d4652a', border: '1px solid rgba(212,101,42,0.15)' }}>
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {!isLogin && (
+            <>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-[#7a7570] uppercase tracking-wider">Full Name</label>
+                <input
+                  type="text"
+                  placeholder="Kabir Singh"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl text-sm outline-none border border-[#e2ddd8] focus:border-[#1a3d2b] transition-colors"
+                  style={{ background: '#fff', color: '#141414' }}
+                  required
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-[#7a7570] uppercase tracking-wider">Phone Number</label>
+                <input
+                  type="tel"
+                  placeholder="+91 98765 43210"
+                  value={phone}
+                  onChange={e => setPhone(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl text-sm outline-none border border-[#e2ddd8] focus:border-[#1a3d2b] transition-colors"
+                  style={{ background: '#fff', color: '#141414' }}
+                  required
+                />
+              </div>
+            </>
+          )}
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] font-bold text-[#7a7570] uppercase tracking-wider">Email Address</label>
+            <input
+              type="email"
+              placeholder="name@example.com"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl text-sm outline-none border border-[#e2ddd8] focus:border-[#1a3d2b] transition-colors"
+              style={{ background: '#fff', color: '#141414' }}
+              required
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <div className="flex justify-between items-center">
+              <label className="text-[10px] font-bold text-[#7a7570] uppercase tracking-wider">Password</label>
+              {isLogin && (
+                <button type="button" className="text-[10px] font-bold text-[#1a3d2b] hover:underline bg-none border-none cursor-pointer">
+                  Forgot?
+                </button>
+              )}
+            </div>
+            <input
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl text-sm outline-none border border-[#e2ddd8] focus:border-[#1a3d2b] transition-colors"
+              style={{ background: '#fff', color: '#141414' }}
+              required
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3.5 mt-2 rounded-xl text-sm font-bold text-white shadow-md active:scale-98 transition-all flex items-center justify-center gap-2"
+            style={{ background: '#1a3d2b', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.75 : 1 }}
+          >
+            {loading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                Signing in...
+              </>
+            ) : (
+              isLogin ? 'Sign In' : 'Create Account'
+            )}
+          </button>
+        </form>
+
+        <div className="text-center mt-6 flex flex-col gap-3">
+          <button
+            type="button"
+            onClick={onGuest}
+            className="text-xs font-bold text-[#1a3d2b] hover:underline bg-none border-none cursor-pointer mx-auto"
+          >
+            Continue as Guest
+          </button>
+          <div className="h-[1px] bg-[#e2ddd8] w-full my-1"></div>
+          <p className="text-[10px] text-[#7a7570]">
+            By continuing, you agree to Nestly's Terms of Service and Privacy Policy.
+          </p>
+        </div>
+      </div>
     </div>
   )
 }
@@ -2071,35 +2192,31 @@ export default function App() {
   const [conversations, setConversations] = useState<Conversation[]>([])
 
   useEffect(() => {
-    const listingsRef = ref(db, 'listings')
-    get(listingsRef).then((snapshot) => {
-      if (!snapshot.exists()) {
-        const initialListings: Record<string, Listing> = {}
-        LISTINGS.forEach(l => {
+    const listingsCol = collection(firestore, 'listings')
+    getDocs(listingsCol).then((snapshot) => {
+      if (snapshot.empty) {
+        LISTINGS.forEach(async (l) => {
           const coords = LISTING_COORDS[l.id] || [19.0760, 72.8777]
-          initialListings[l.id] = {
+          await setDoc(doc(firestore, 'listings', l.id), {
             ...l,
             lat: coords[0],
             lng: coords[1]
-          }
+          })
         })
-        set(listingsRef, initialListings)
       }
     })
   }, [])
 
   useEffect(() => {
-    const listingsRef = ref(db, 'listings')
-    const unsubscribe = onValue(listingsRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const rawData = snapshot.val()
-        const mapped = Object.entries(rawData)
-          .filter(([_, raw]: [string, any]) => raw && raw.status !== 'draft')
-          .map(([key, raw]: [string, any]) => mapDatabaseListing(key, raw))
-        setListings(mapped)
-      } else {
-        setListings([])
-      }
+    const listingsCol = collection(firestore, 'listings')
+    const unsubscribe = onSnapshot(listingsCol, (snapshot) => {
+      const list = snapshot.docs
+        .filter(docSnap => {
+          const raw = docSnap.data()
+          return raw && raw.status !== 'draft'
+        })
+        .map(docSnap => mapDatabaseListing(docSnap.id, docSnap.data()))
+      setListings(list)
     })
     return () => unsubscribe()
   }, [])
@@ -2108,10 +2225,10 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
       if (authUser) {
         setUser(authUser)
-        const profileRef = ref(db, `profiles/${authUser.uid}`)
-        onValue(profileRef, (snapshot) => {
+        const profileDocRef = doc(firestore, 'profiles', authUser.uid)
+        onSnapshot(profileDocRef, (snapshot) => {
           if (snapshot.exists()) {
-            setUserProfile(snapshot.val())
+            setUserProfile(snapshot.data())
           } else {
             const defaultProfile = {
               name: authUser.displayName || 'Kabir Singh',
@@ -2120,7 +2237,7 @@ export default function App() {
               email: authUser.email || '',
               joined: 'Aug 2026'
             }
-            set(profileRef, defaultProfile)
+            setDoc(profileDocRef, defaultProfile)
             setUserProfile(defaultProfile)
           }
         })
@@ -2140,30 +2257,25 @@ export default function App() {
       setConversations([])
       return
     }
-    const convsRef = ref(db, `conversations/${user.uid}`)
-    const unsubscribe = onValue(convsRef, (snapshot) => {
-      if (snapshot.exists()) {
-        setConversations(Object.values(snapshot.val()))
-      } else {
-        setConversations([])
-      }
+    const convsCol = collection(firestore, 'profiles', user.uid, 'conversations')
+    const unsubscribe = onSnapshot(convsCol, (snapshot) => {
+      const list = snapshot.docs.map(doc => doc.data() as Conversation)
+      setConversations(list)
     })
     return () => unsubscribe()
   }, [user])
 
   useEffect(() => {
     if (!user) return
-    const convsRef = ref(db, `conversations/${user.uid}`)
-    get(convsRef).then((snapshot) => {
-      if (!snapshot.exists()) {
-        const seedConvs: Record<string, Conversation> = {}
-        CONVERSATIONS.forEach(c => {
-          seedConvs[c.id] = c
+    const convsCol = collection(firestore, 'profiles', user.uid, 'conversations')
+    getDocs(convsCol).then((snapshot) => {
+      if (snapshot.empty) {
+        CONVERSATIONS.forEach(async (c) => {
+          await setDoc(doc(convsCol, c.id), c)
         })
-        set(convsRef, seedConvs)
         
-        MESSAGES.forEach(m => {
-          set(ref(db, `chats/c1/messages/${m.id}`), m)
+        MESSAGES.forEach(async (m) => {
+          await setDoc(doc(firestore, 'chats', 'c1', 'messages', m.id), m)
         })
       }
     })
@@ -2171,8 +2283,8 @@ export default function App() {
 
   const handleUpdateProfile = async (profileData: { name: string; phone: string; avatar: string }) => {
     if (!user) return
-    const profileRef = ref(db, `profiles/${user.uid}`)
-    await dbUpdate(profileRef, profileData)
+    const profileRef = doc(firestore, 'profiles', user.uid)
+    await updateDoc(profileRef, profileData)
     if (user.displayName !== profileData.name || user.photoURL !== profileData.avatar) {
       await updateProfile(user, {
         displayName: profileData.name,
@@ -2206,7 +2318,7 @@ export default function App() {
       email: emailVal,
       joined: 'Aug 2026'
     }
-    await set(ref(db, `profiles/${credentials.user.uid}`), profileData)
+    await setDoc(doc(firestore, 'profiles', credentials.user.uid), profileData)
     await updateProfile(credentials.user, {
       displayName: nameVal,
       photoURL: profileData.avatar
@@ -2215,7 +2327,7 @@ export default function App() {
 
   const handleOnboardingDone = () => {
     setOnboarded(true)
-    signInAnonymously(auth).catch(err => console.error(err))
+    setScreen('auth')
   }
 
   if (!onboarded) return <OnboardingScreen onDone={handleOnboardingDone} />
@@ -2260,8 +2372,8 @@ export default function App() {
           <CreateScreen 
             onClose={() => { setScreen('home'); setNavTab('home') }} 
             onPublish={async (newListingData) => {
-              const listingsRef = ref(db, 'listings')
-              const newListingRef = push(listingsRef)
+              const listingsCol = collection(firestore, 'listings')
+              const newListingDoc = doc(listingsCol)
               
               const query = `${newListingData.town}, ${newListingData.area || ''}`.trim()
               let coords: [number, number] = [19.0760, 72.8777] // default Mumbai
@@ -2287,7 +2399,7 @@ export default function App() {
               }
 
               const newListing: Listing & { status: string } = {
-                id: newListingRef.key || Date.now().toString(),
+                id: newListingDoc.id,
                 ...newListingData,
                 status: 'active',
                 lat: coords[0],
@@ -2297,7 +2409,7 @@ export default function App() {
                 postedByAvatar: userProfile?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&h=80&fit=crop&auto=format',
               }
 
-              await set(newListingRef, newListing)
+              await setDoc(newListingDoc, newListing)
               setScreen('home')
               setNavTab('home')
             }}
@@ -2317,8 +2429,7 @@ export default function App() {
             conversations={conversations}
             onUpdateProfile={handleUpdateProfile}
             onSignOut={handleSignOut}
-            onSignIn={handleSignIn}
-            onSignUp={handleSignUp}
+            onAuthTrigger={() => setScreen('auth')}
           />
         )}
         {screen === 'listing-detail' && selectedListing && (
@@ -2328,10 +2439,10 @@ export default function App() {
             onChat={async () => {
               if (!user) return
               const convId = `conv_${selectedListing.id}_${user.uid}`
-              const convRef = ref(db, `conversations/${user.uid}/${convId}`)
-              const snapshot = await get(convRef)
+              const convRef = doc(firestore, 'profiles', user.uid, 'conversations', convId)
+              const docSnap = await getDoc(convRef)
               
-              let convData = snapshot.val()
+              let convData = docSnap.exists() ? docSnap.data() as Conversation : null
               if (!convData) {
                 convData = {
                   id: convId,
@@ -2342,10 +2453,10 @@ export default function App() {
                   unread: 0,
                   listing: `${selectedListing.title} · ${selectedListing.town}`
                 }
-                await set(convRef, convData)
+                await setDoc(convRef, convData)
                 
                 const msgId = 'welcome_' + Date.now()
-                await set(ref(db, `chats/${convId}/messages/${msgId}`), {
+                await setDoc(doc(firestore, 'chats', convId, 'messages', msgId), {
                   id: msgId,
                   text: `Hi! I saw your listing for the ${selectedListing.title}.`,
                   senderId: user.uid,
@@ -2359,13 +2470,42 @@ export default function App() {
             }}
           />
         )}
+        {screen === 'auth' && (
+          <AuthScreen 
+            onSignIn={async (emailVal, passVal) => {
+              await handleSignIn(emailVal, passVal)
+              setScreen('home')
+              setNavTab('home')
+            }}
+            onSignUp={async (emailVal, passVal, nameVal, phoneVal) => {
+              await handleSignUp(emailVal, passVal, nameVal, phoneVal)
+              setScreen('home')
+              setNavTab('home')
+            }}
+            onGuest={() => {
+              if (!user) {
+                signInAnonymously(auth).catch(err => console.error(err))
+              }
+              setScreen('home')
+              setNavTab('home')
+            }}
+            onClose={user ? () => { setScreen('home'); setNavTab('home') } : undefined}
+          />
+        )}
       </div>
 
       {showNav && (
         <BottomNav
           active={navTab}
           onNav={handleNav}
-          onCreate={() => { setScreen('create'); setNavTab('home') }}
+          onCreate={() => {
+            if (user?.isAnonymous) {
+              setScreen('auth')
+            } else {
+              setScreen('create')
+              setNavTab('home')
+            }
+          }}
         />
       )}
     </div>
