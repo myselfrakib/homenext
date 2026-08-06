@@ -1316,7 +1316,7 @@ function ProfileScreen({
         </div>
       )}
 
-      {!isEditMode && authMode === 'none' && (
+      {!isEditMode && (
         <div className="mx-4 mb-4 grid grid-cols-3 rounded-2xl overflow-hidden" style={{ border: '1px solid #e2ddd8', background: '#fff' }}>
           {stats.map(({ label, val }, i) => (
             <div
