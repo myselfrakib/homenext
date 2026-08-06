@@ -34,7 +34,7 @@ interface Listing {
   rent: number
   bedrooms: number
   bathrooms: number
-  sqft: number
+  floor: string
   tags: string[]
   imageUrl: string
   available: string
@@ -74,7 +74,7 @@ const LISTINGS: Listing[] = [
     rent: 32000,
     bedrooms: 2,
     bathrooms: 2,
-    sqft: 950,
+    floor: '3',
     tags: ['Furnished', 'Pet Friendly', 'Parking'],
     imageUrl: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=600&h=400&fit=crop&auto=format',
     available: 'From Aug 1',
@@ -91,7 +91,7 @@ const LISTINGS: Listing[] = [
     rent: 18500,
     bedrooms: 1,
     bathrooms: 1,
-    sqft: 520,
+    floor: 'Ground',
     tags: ['Semi-Furnished', 'WiFi Ready', 'Power Backup'],
     imageUrl: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600&h=400&fit=crop&auto=format',
     available: 'Immediate',
@@ -108,7 +108,7 @@ const LISTINGS: Listing[] = [
     rent: 45000,
     bedrooms: 3,
     bathrooms: 3,
-    sqft: 1600,
+    floor: '1',
     tags: ['Fully Furnished', 'Terrace', 'Gated'],
     imageUrl: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&h=400&fit=crop&auto=format',
     available: 'From Sep 15',
@@ -125,7 +125,7 @@ const LISTINGS: Listing[] = [
     rent: 22000,
     bedrooms: 1,
     bathrooms: 1,
-    sqft: 680,
+    floor: '2',
     tags: ['Furnished', 'Metro Nearby'],
     imageUrl: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&h=400&fit=crop&auto=format',
     available: 'From Aug 10',
@@ -142,7 +142,7 @@ const LISTINGS: Listing[] = [
     rent: 55000,
     bedrooms: 2,
     bathrooms: 1,
-    sqft: 1100,
+    floor: 'Ground',
     tags: ['Heritage', 'Unfurnished', 'High Ceiling'],
     imageUrl: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=600&h=400&fit=crop&auto=format',
     available: 'Immediate',
@@ -255,10 +255,11 @@ const BathIcon = () => (
   </svg>
 )
 
-const SqftIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <rect x="3" y="3" width="18" height="18" rx="2" />
-    <path d="M9 3v18M3 9h6" />
+const FloorIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polygon points="12 2 2 7 12 12 22 7 12 2" />
+    <polyline points="2 17 12 22 22 17" />
+    <polyline points="2 12 12 17 22 12" />
   </svg>
 )
 
@@ -372,9 +373,8 @@ function FeaturedCard({ listing, onClick }: { listing: Listing; onClick: () => v
           <span>{listing.area}, {listing.town}</span>
         </div>
 
-        {/* Stats pill */}
         <div className="flex items-center gap-2 mb-3">
-          {[`${listing.bedrooms}bd`, `${listing.bathrooms}ba`, `${listing.sqft}ft²`].map(s => (
+          {[`${listing.bedrooms}bd`, `${listing.bathrooms}ba`, listing.floor === 'Ground' ? 'G floor' : `Floor ${listing.floor}`].map(s => (
             <span key={s} className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.14)', color: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(6px)' }}>{s}</span>
           ))}
         </div>
@@ -481,7 +481,7 @@ function ListingCard({ listing, onClick }: { listing: Listing; onClick: () => vo
           <div className="flex items-center gap-2.5 mb-2" style={{ color: '#7a7570' }}>
             <span className="flex items-center gap-1 text-xs"><BedIcon />{listing.bedrooms}</span>
             <span className="flex items-center gap-1 text-xs"><BathIcon />{listing.bathrooms}</span>
-            <span className="flex items-center gap-1 text-xs"><SqftIcon />{listing.sqft}</span>
+            <span className="flex items-center gap-1 text-xs"><FloorIcon />{listing.floor === 'Ground' ? 'G floor' : `Floor ${listing.floor}`}</span>
             {listing.verified && (
               <span className="ml-auto flex items-center gap-0.5 text-xs font-semibold" style={{ color: '#1a3d2b' }}>
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="#1a3d2b"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -754,7 +754,7 @@ function ListingDetailScreen({
             {[
               { icon: <BedIcon />, val: `${listing.bedrooms} bed` },
               { icon: <BathIcon />, val: `${listing.bathrooms} bath` },
-              { icon: <SqftIcon />, val: `${listing.sqft} sqft` },
+              { icon: <FloorIcon />, val: listing.floor === 'Ground' ? 'Ground floor' : `Floor ${listing.floor}` },
             ].map(({ icon, val }) => (
               <div key={val} className="flex flex-col items-center gap-1">
                 <span style={{ color: '#7a7570' }}>{icon}</span>
@@ -833,7 +833,7 @@ function CreateScreen({ onClose, onPublish }: { onClose: () => void; onPublish: 
     deposit: '',
     bedrooms: '1',
     bathrooms: '1',
-    sqft: '',
+    floor: 'Ground',
     description: '',
     furnished: 'Unfurnished',
     available: '',
@@ -910,8 +910,10 @@ function CreateScreen({ onClose, onPublish }: { onClose: () => void; onPublish: 
                   {['1','2','3','4'].map(v => <option key={v}>{v}</option>)}
                 </select>
               </F>
-              <F label="Area (sqft)">
-                <input className={inp} style={inpStyle} type="number" placeholder="900" value={form.sqft} onChange={e => setForm(f => ({ ...f, sqft: e.target.value }))} />
+              <F label="Floor">
+                <select className={inp} style={inpStyle} value={form.floor} onChange={e => setForm(f => ({ ...f, floor: e.target.value }))}>
+                  {['Ground', '1', '2', '3', '4', '5', '6', '7', '8', '9+'].map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
               </F>
             </div>
             <F label="Furnishing">
@@ -1039,7 +1041,7 @@ function CreateScreen({ onClose, onPublish }: { onClose: () => void; onPublish: 
                 rent: parseInt(form.rent) || 0,
                 bedrooms: parseInt(form.bedrooms) || 1,
                 bathrooms: parseInt(form.bathrooms) || 1,
-                sqft: parseInt(form.sqft) || 500,
+                floor: form.floor || 'Ground',
                 tags: form.tags,
                 imageUrl: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&h=400&fit=crop&auto=format',
                 available: form.available ? `From ${new Date(form.available).toLocaleDateString([], {month: 'short', day: 'numeric'})}` : 'Immediate',
@@ -2213,7 +2215,7 @@ function mapDatabaseListing(key: string, raw: any): Listing {
     rent: Number(raw.rent) || 0,
     bedrooms,
     bathrooms: Number(raw.bathrooms) || 1,
-    sqft: Number(raw.sqft) || 500,
+    floor: raw.floor || 'Ground',
     tags: combinedTags,
     lat: exactLocation.lat || raw.lat,
     lng: exactLocation.lng || raw.lng,
