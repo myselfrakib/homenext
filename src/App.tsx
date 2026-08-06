@@ -821,6 +821,16 @@ function CreateScreen({ onClose, onPublish }: { onClose: () => void; onPublish: 
     }))
   }
 
+  const isStepValid = () => {
+    if (step === 1) {
+      return form.title.trim().length > 0 && form.rent.trim().length > 0
+    }
+    if (step === 2) {
+      return form.town.trim().length > 0 && form.district.trim().length > 0
+    }
+    return true
+  }
+
   const F = ({ label, children }: { label: string; children: React.ReactNode }) => (
     <div className="mb-4">
       <label className="block text-xs font-semibold mb-1.5" style={{ color: '#5a5550' }}>{label}</label>
@@ -969,7 +979,9 @@ function CreateScreen({ onClose, onPublish }: { onClose: () => void; onPublish: 
             <div className="p-4 rounded-2xl" style={{ background: '#fff', border: '1px solid #e2ddd8' }}>
               <h3 className="text-sm font-semibold mb-2" style={{ color: '#141414' }}>Preview</h3>
               <p className="text-sm font-semibold" style={{ color: '#141414' }}>{form.title || 'Untitled listing'}</p>
-              <p className="text-xs" style={{ color: '#7a7570' }}>{form.town || 'Town'} · ₹{form.rent || '—'}/mo</p>
+              <p className="text-xs" style={{ color: '#7a7570' }}>
+                {form.town ? `${form.town}${form.district ? `, ${form.district}` : ''}` : 'Location'} · ₹{form.rent || '—'}/mo
+              </p>
               <div className="flex gap-1 mt-2 flex-wrap">
                 {form.tags.map(t => (
                   <span key={t} className="text-xs px-2 py-0.5 rounded-full" style={{ background: '#eaf2ec', color: '#1a3d2b' }}>{t}</span>
@@ -993,13 +1005,14 @@ function CreateScreen({ onClose, onPublish }: { onClose: () => void; onPublish: 
         )}
         <button
           onClick={async () => {
+            if (!isStepValid()) return
             if (step < 3) {
               setStep(s => s + 1)
             } else {
               const formattedListing = {
                 title: form.title,
                 area: form.town,
-                town: form.town,
+                town: form.district,
                 rent: parseInt(form.rent) || 0,
                 bedrooms: parseInt(form.bedrooms) || 1,
                 bathrooms: parseInt(form.bathrooms) || 1,
@@ -1012,8 +1025,13 @@ function CreateScreen({ onClose, onPublish }: { onClose: () => void; onPublish: 
               await onPublish(formattedListing)
             }
           }}
+          disabled={!isStepValid()}
           className="flex-1 py-3 rounded-xl text-sm font-semibold text-white active:scale-95 transition-transform"
-          style={{ background: '#1a3d2b' }}
+          style={{ 
+            background: '#1a3d2b',
+            opacity: isStepValid() ? 1 : 0.5,
+            cursor: isStepValid() ? 'pointer' : 'not-allowed'
+          }}
         >
           {step < 3 ? 'Continue' : 'Publish listing'}
         </button>
