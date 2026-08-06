@@ -45,6 +45,12 @@ interface Listing {
   description: string
   lat?: number
   lng?: number
+  postedByUid?: string
+  postedByPhone?: string
+  ownerName?: string
+  ownerPhone?: string
+  street?: string
+  media?: any[]
 }
 
 interface Conversation {
@@ -83,6 +89,10 @@ const LISTINGS: Listing[] = [
     postedByAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&h=80&fit=crop&auto=format',
     verified: true,
     description: 'A bright, well-maintained 2BHK in the heart of Andheri West. Recently renovated kitchen, two full bathrooms, dedicated parking spot in the basement. Great connectivity — just 7 minutes from Andheri Metro.',
+    ownerName: 'Riya Sharma',
+    ownerPhone: '+91 98765 43210',
+    street: 'Flat 4B, Sunrise Apartments, MG Road',
+    postedByPhone: '+91 98989 76767'
   },
   {
     id: '2',
@@ -100,6 +110,10 @@ const LISTINGS: Listing[] = [
     postedByAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&auto=format',
     verified: true,
     description: 'Compact studio designed for working professionals. Located 2km from ITPL — ideal for anyone at Wipro or TCS campuses. Building has 24/7 security and a rooftop terrace.',
+    ownerName: 'Arjun Nair',
+    ownerPhone: '+91 98765 43211',
+    street: 'Room 201, Green Meadows, Whitefield',
+    postedByPhone: '+91 98989 76768'
   },
   {
     id: '3',
@@ -117,6 +131,10 @@ const LISTINGS: Listing[] = [
     postedByAvatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=80&h=80&fit=crop&auto=format',
     verified: false,
     description: 'Generously sized 3BHK in a premium gated society. Private terrace with city views. Walking distance to Banjara Hills Road No. 12 restaurants and shopping.',
+    ownerName: 'Priya Menon',
+    ownerPhone: '+91 98765 43212',
+    street: 'Villa 12, Palm Grove, Banjara Hills',
+    postedByPhone: '+91 98989 76769'
   },
   {
     id: '4',
@@ -134,6 +152,10 @@ const LISTINGS: Listing[] = [
     postedByAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop&auto=format',
     verified: true,
     description: 'Warm and quiet 1BHK two floors up in a well-maintained building. Karol Bagh Metro is a 4-minute walk. Ground-floor grocery and medical shop in the same lane.',
+    ownerName: 'Kabir Singh',
+    ownerPhone: '+91 98765 43213',
+    street: 'Flat 1A, Shanti Nivas, Karol Bagh',
+    postedByPhone: '+91 98989 76770'
   },
   {
     id: '5',
@@ -151,6 +173,10 @@ const LISTINGS: Listing[] = [
     postedByAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&h=80&fit=crop&auto=format',
     verified: true,
     description: 'Rare ground-floor loft in a pre-independence building in Fort. Original wooden floors, 14ft ceilings, and south-facing windows. Perfect for a creative studio or family.',
+    ownerName: 'Zara Irani',
+    ownerPhone: '+91 98765 43214',
+    street: 'Flat 302, Sea View Apartments, Fort',
+    postedByPhone: '+91 98989 76771'
   },
 ]
 
@@ -755,18 +781,174 @@ function HomeScreen({ listings, onListingClick }: { listings: Listing[]; onListi
   )
 }
 
+function MapModal({ 
+  lat, 
+  lng, 
+  title, 
+  street, 
+  area, 
+  town, 
+  onClose 
+}: { 
+  lat: number; 
+  lng: number; 
+  title: string; 
+  street: string; 
+  area: string; 
+  town: string; 
+  onClose: () => void 
+}) {
+  const mapRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!mapRef.current) return
+    if ((window as any).L) {
+      const L = (window as any).L
+      const map = L.map(mapRef.current).setView([lat, lng], 15)
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap'
+      }).addTo(map)
+      L.marker([lat, lng]).addTo(map).bindPopup(`<b>${title}</b><br/>${street || area}`).openPopup()
+      return () => map.remove()
+    }
+  }, [lat, lng, title, street, area])
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-stone-200 bg-stone-50">
+          <div>
+            <h3 className="font-bold text-sm text-stone-900">Exact Property Location</h3>
+            <p className="text-xs text-stone-500 truncate">{street || area}, {town}</p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-stone-200 flex items-center justify-center text-stone-700 font-bold text-sm">×</button>
+        </div>
+        <div ref={mapRef} className="w-full h-64 bg-stone-100" />
+        <div className="p-4 flex flex-col gap-2 bg-stone-50 border-t border-stone-200">
+          <p className="text-xs text-stone-600 font-medium"><strong>Exact Address:</strong> {street || 'Address provided'}, {area}, {town}</p>
+          <a
+            href={`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`}
+            target="_blank"
+            rel="noreferrer"
+            className="w-full py-3 rounded-xl bg-[#1a3d2b] text-white text-xs font-semibold flex items-center justify-center gap-2 shadow-md active:scale-95 transition-transform"
+          >
+            <LocationIcon size={14} /> Open in Google Maps
+          </a>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function RazorpayCheckoutModal({
+  listing,
+  feeAmount,
+  onSuccess,
+  onClose
+}: {
+  listing: Listing
+  feeAmount: number
+  onSuccess: () => void
+  onClose: () => void
+}) {
+  const [loading, setLoading] = useState(false)
+
+  const handlePay = () => {
+    setLoading(true)
+    setTimeout(() => {
+      setLoading(false)
+      onSuccess()
+    }, 1200)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/80 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-in slide-in-from-bottom duration-300">
+        <div className="bg-[#0c2340] text-white p-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-xs">R</div>
+            <div>
+              <p className="font-bold text-sm leading-none">Razorpay Secure</p>
+              <p className="text-[10px] text-blue-200 mt-0.5">Nestly Property Access Fee</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-stone-400 hover:text-white font-bold text-lg">×</button>
+        </div>
+
+        <div className="p-5">
+          <div className="bg-stone-50 border border-stone-200 rounded-2xl p-3.5 mb-4 flex items-center justify-between">
+            <div>
+              <p className="text-xs text-stone-500 font-medium">5% Rent Security Deposit</p>
+              <p className="text-sm font-bold text-stone-900 truncate max-w-[200px]">{listing.title}</p>
+            </div>
+            <p className="font-mono text-lg font-bold text-[#1a3d2b]">₹{feeAmount.toLocaleString()}</p>
+          </div>
+
+          <div className="space-y-2 mb-5">
+            <p className="text-xs font-semibold text-stone-700">What you get after payment:</p>
+            <div className="flex items-center gap-2 text-xs text-stone-600">
+              <span className="text-emerald-600 font-bold">✓</span> Full Owner Name & Direct Mobile Number
+            </div>
+            <div className="flex items-center gap-2 text-xs text-stone-600">
+              <span className="text-emerald-600 font-bold">✓</span> Poster Contact Details
+            </div>
+            <div className="flex items-center gap-2 text-xs text-stone-600">
+              <span className="text-emerald-600 font-bold">✓</span> Exact Street Address & Interactive Map
+            </div>
+            <div className="flex items-center gap-2 text-xs text-stone-600">
+              <span className="text-emerald-600 font-bold">✓</span> Direct Chat with Lister
+            </div>
+          </div>
+
+          <button
+            onClick={handlePay}
+            disabled={loading}
+            className="w-full py-3.5 rounded-2xl bg-[#0c2340] text-white font-bold text-sm shadow-lg hover:bg-blue-950 active:scale-98 transition-all flex items-center justify-center gap-2"
+          >
+            {loading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span>Processing Razorpay...</span>
+              </>
+            ) : (
+              <>
+                <span>Pay ₹{feeAmount.toLocaleString()} via Razorpay</span>
+              </>
+            )}
+          </button>
+          
+          <p className="text-[10px] text-center text-stone-400 mt-3 flex items-center justify-center gap-1">
+            🔒 256-bit Encrypted · Simulated Razorpay Gateway
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ListingDetailScreen({
   listing,
   onBack,
   onChat,
+  isUnlocked,
+  onUnlock,
+  userProfile
 }: {
   listing: Listing
   onBack: () => void
   onChat: () => void
+  isUnlocked: boolean
+  onUnlock: (id: string) => void
+  userProfile?: any
 }) {
   const galleryRef = useRef<HTMLDivElement>(null)
   const [galleryIdx, setGalleryIdx] = useState(0)
+  const [showMapModal, setShowMapModal] = useState(false)
+  const [showRazorpay, setShowRazorpay] = useState(false)
   const mediaCount = listing.media?.length || 0
+
+  const unlockFee = Math.round(listing.rent * 0.05)
 
   useEffect(() => {
     if (mediaCount <= 1) return
@@ -797,8 +979,37 @@ function ListingDetailScreen({
     }
   }
 
+  const handleTriggerPay = () => {
+    if (typeof (window as any).Razorpay !== 'undefined') {
+      try {
+        const options = {
+          key: "rzp_test_nestlyKey",
+          amount: unlockFee * 100,
+          currency: "INR",
+          name: "Nestly",
+          description: `5% Rent Access Fee for ${listing.title}`,
+          handler: function () {
+            onUnlock(listing.id)
+          },
+          prefill: {
+            name: userProfile?.name || "Guest User",
+            email: userProfile?.email || "user@nestly.com",
+            contact: userProfile?.phone || "+91 9876543210"
+          },
+          theme: { color: "#1a3d2b" }
+        }
+        const rzp = new (window as any).Razorpay(options)
+        rzp.open()
+      } catch (err) {
+        setShowRazorpay(true)
+      }
+    } else {
+      setShowRazorpay(true)
+    }
+  }
+
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col h-full bg-white relative">
       {/* Hero image */}
       <div className="relative" style={{ height: 260 }}>
         {listing.media && listing.media.length > 0 ? (
@@ -857,17 +1068,42 @@ function ListingDetailScreen({
             )}
           </div>
 
-          {/* Privacy notice */}
-          <div
-            className="flex items-start gap-2 px-3 py-2 rounded-xl mb-3 text-xs"
-            style={{ background: '#fdf0e8', color: '#d4652a' }}
-          >
-            <LocationIcon size={14} />
-            <span>
-              <strong>General area only:</strong> Exact address shared after you connect with the lister.
-              <br />
-              <span className="font-semibold">{listing.area}, {listing.town}</span>
-            </span>
+          {/* Location details & Map option */}
+          <div className="p-3.5 rounded-2xl mb-4" style={{ background: isUnlocked ? '#f0fdf4' : '#fdf0e8', border: isUnlocked ? '1px solid #bbf7d0' : '1px solid #fecdd3' }}>
+            <div className="flex items-start gap-2 text-xs mb-1">
+              <LocationIcon size={16} />
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-stone-900">{listing.area}, {listing.town}</p>
+                {isUnlocked ? (
+                  <p className="text-xs text-stone-700 mt-0.5 font-medium">📍 {listing.street || 'Exact street address unlocked'}</p>
+                ) : (
+                  <div className="relative mt-1">
+                    <p className="text-xs text-stone-400 select-none blur-[5px] pointer-events-none">
+                      Flat 4B, Sunrise Apartments, Main Street Road
+                    </p>
+                    <span className="absolute inset-0 flex items-center text-[11px] font-bold text-rose-700">
+                      🔒 Exact street address hidden · Pay 5% to unlock
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {isUnlocked ? (
+              <button
+                onClick={() => setShowMapModal(true)}
+                className="mt-2 w-full py-2.5 rounded-xl bg-[#1a3d2b] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-transform"
+              >
+                🗺️ View Exact Location on Map
+              </button>
+            ) : (
+              <button
+                onClick={handleTriggerPay}
+                className="mt-2 w-full py-2.5 rounded-xl bg-rose-100 text-rose-800 text-xs font-bold flex items-center justify-center gap-1.5 border border-rose-200 active:scale-98 transition-transform"
+              >
+                🔒 Map Location Locked · Tap to Pay ₹{unlockFee.toLocaleString()}
+              </button>
+            )}
           </div>
 
           {/* Stats */}
@@ -898,15 +1134,61 @@ function ListingDetailScreen({
           <h3 className="text-sm font-semibold mb-2" style={{ color: '#141414' }}>About this space</h3>
           <p className="text-sm leading-relaxed mb-4" style={{ color: '#5a5550' }}>{listing.description}</p>
 
-          {/* Posted by */}
-          <div className="flex items-center gap-3 p-3 rounded-xl mb-6" style={{ border: '1px solid #e2ddd8' }}>
-            <img src={listing.postedByAvatar} alt={listing.postedBy} className="w-10 h-10 rounded-full object-cover bg-stone-200" />
-            <div className="flex-1">
-              <p className="text-xs" style={{ color: '#7a7570' }}>Listed by</p>
-              <p className="text-sm font-semibold" style={{ color: '#141414' }}>{listing.postedBy}</p>
+          {/* Owner details card */}
+          <div className="p-3.5 rounded-2xl mb-4 bg-stone-50 border border-stone-200">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs font-bold text-stone-700 flex items-center gap-1">
+                👤 Property Owner Details
+              </span>
+              {!isUnlocked && (
+                <span className="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">
+                  Locked
+                </span>
+              )}
             </div>
-            <div className="text-xs font-medium px-2 py-1 rounded-full" style={{ background: '#eaf2ec', color: '#1a3d2b' }}>
-              Active
+            {isUnlocked ? (
+              <div className="space-y-1.5 text-xs">
+                <p className="text-stone-900 font-semibold">Name: <span className="font-normal text-stone-800">{listing.ownerName || 'Kabir Singh'}</span></p>
+                <div className="text-stone-900 font-semibold flex items-center justify-between">
+                  <span>Mobile: <span className="font-normal text-stone-800">{listing.ownerPhone || '+91 98765 43210'}</span></span>
+                  <a href={`tel:${listing.ownerPhone || '+919876543210'}`} className="px-3 py-1 rounded-lg bg-emerald-700 text-white font-bold text-[11px] shadow-sm">Call Owner</a>
+                </div>
+              </div>
+            ) : (
+              <div className="relative py-1">
+                <div className="space-y-1 text-xs blur-[5px] select-none pointer-events-none opacity-60">
+                  <p className="text-stone-900 font-semibold">Name: Kabir Singh</p>
+                  <p className="text-stone-900 font-semibold">Mobile: +91 98765 43210</p>
+                </div>
+                <div className="absolute inset-0 flex items-center justify-between">
+                  <span className="text-xs font-bold text-stone-800">🔒 Pay 5% to reveal owner name & phone</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Posted by card */}
+          <div className="p-3.5 rounded-2xl mb-6 bg-stone-50 border border-stone-200">
+            <div className="flex items-center gap-3">
+              {isUnlocked ? (
+                <img src={listing.postedByAvatar} alt={listing.postedBy} className="w-10 h-10 rounded-full object-cover bg-stone-200 shrink-0" />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-stone-200 flex items-center justify-center shrink-0 text-stone-500 font-bold text-sm">
+                  👤
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-stone-500">Listed by</p>
+                <p className="text-sm font-bold text-stone-900 truncate">{listing.postedBy}</p>
+                {isUnlocked ? (
+                  <p className="text-xs text-stone-600 font-medium mt-0.5">📞 {listing.postedByPhone || '+91 99999 88888'}</p>
+                ) : (
+                  <p className="text-[11px] text-stone-400 font-medium mt-0.5 select-none blur-[4px]">📞 +91 98765 43210</p>
+                )}
+              </div>
+              <div className="text-xs font-medium px-2 py-1 rounded-full bg-emerald-100 text-emerald-900 shrink-0">
+                Active
+              </div>
             </div>
           </div>
         </div>
@@ -914,23 +1196,57 @@ function ListingDetailScreen({
 
       {/* CTA */}
       <div className="p-4 pt-2" style={{ borderTop: '1px solid #e2ddd8', background: '#fff' }}>
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between gap-3 mb-2">
           <div>
             <p className="text-xs" style={{ color: '#7a7570' }}>Monthly rent</p>
             <p style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, color: '#141414' }}>
               ₹{listing.rent.toLocaleString()}
             </p>
           </div>
-          <button
-            onClick={onChat}
-            className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold text-white"
-            style={{ background: '#1a3d2b' }}
-          >
-            <ChatIcon active={false} />
-            Chat with lister
-          </button>
+          {isUnlocked ? (
+            <button
+              onClick={onChat}
+              className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold text-white active:scale-95 transition-transform"
+              style={{ background: '#1a3d2b' }}
+            >
+              <ChatIcon active={false} />
+              Chat with lister
+            </button>
+          ) : (
+            <button
+              onClick={handleTriggerPay}
+              className="flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-bold text-white bg-[#1a3d2b] shadow-lg shadow-[#1a3d2b]/20 active:scale-95 transition-transform"
+            >
+              <span>💳 Pay ₹{unlockFee.toLocaleString()} (5% rent)</span>
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Modals */}
+      {showMapModal && (
+        <MapModal
+          lat={listing.lat || 19.0760}
+          lng={listing.lng || 72.8777}
+          title={listing.title}
+          street={listing.street || ''}
+          area={listing.area}
+          town={listing.town}
+          onClose={() => setShowMapModal(false)}
+        />
+      )}
+
+      {showRazorpay && (
+        <RazorpayCheckoutModal
+          listing={listing}
+          feeAmount={unlockFee}
+          onSuccess={() => {
+            setShowRazorpay(false)
+            onUnlock(listing.id)
+          }}
+          onClose={() => setShowRazorpay(false)}
+        />
+      )}
     </div>
   )
 }
@@ -965,6 +1281,8 @@ function CreateScreen({ onClose, onPublish }: { onClose: () => void; onPublish: 
     tags: [] as string[],
     lat: null as number | null,
     lng: null as number | null,
+    ownerName: '',
+    ownerPhone: '+91 ',
   })
 
   const [fetchingLocation, setFetchingLocation] = useState(false)
@@ -1055,7 +1373,10 @@ function CreateScreen({ onClose, onPublish }: { onClose: () => void; onPublish: 
 
   const isStepValid = () => {
     if (step === 1) {
-      return form.title.trim().length > 0 && form.rent.trim().length > 0
+      return form.title.trim().length > 0 && 
+             form.rent.trim().length > 0 && 
+             form.ownerName.trim().length > 0 && 
+             form.ownerPhone.trim().length > 5
     }
     if (step === 2) {
       return form.town.trim().length > 0 && 
@@ -1106,6 +1427,21 @@ function CreateScreen({ onClose, onPublish }: { onClose: () => void; onPublish: 
             <F label="Security deposit (₹)">
               <input className={inp} style={inpStyle} type="number" placeholder="e.g. 75000" value={form.deposit} onChange={e => setForm(f => ({ ...f, deposit: e.target.value }))} />
             </F>
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <F label="Owner's Name">
+                <input className={inp} style={inpStyle} placeholder="Owner name" value={form.ownerName} onChange={e => setForm(f => ({ ...f, ownerName: e.target.value }))} />
+              </F>
+              <F label="Owner's Mobile">
+                <input className={inp} style={inpStyle} placeholder="+91 " value={form.ownerPhone} onChange={e => {
+                  const val = e.target.value
+                  if (val.startsWith('+91 ')) {
+                    setForm(f => ({ ...f, ownerPhone: val }))
+                  } else if (val.length < 4) {
+                    setForm(f => ({ ...f, ownerPhone: '+91 ' }))
+                  }
+                }} />
+              </F>
+            </div>
             <div className="grid grid-cols-3 gap-3">
               <F label="Bedrooms">
                 <select className={inp} style={inpStyle} value={form.bedrooms} onChange={e => setForm(f => ({ ...f, bedrooms: e.target.value }))}>
@@ -1333,7 +1669,11 @@ function CreateScreen({ onClose, onPublish }: { onClose: () => void; onPublish: 
                   description: form.description,
                   media: mediaFiles,
                   lat: form.lat,
-                  lng: form.lng
+                  lng: form.lng,
+                  ownerName: form.ownerName,
+                  ownerPhone: form.ownerPhone,
+                  street: form.street,
+                  postedByPhone: userProfile?.phone || '+91 99999 88888',
                 }
                 await onPublish(formattedListing)
               } catch (err) {
@@ -2519,7 +2859,11 @@ function mapDatabaseListing(key: string, raw: any): Listing {
     imageUrl: raw.imageUrl || (Array.isArray(raw.media) && raw.media.find((m: any) => m.type === 'image')?.url) || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&h=400&fit=crop&auto=format',
     verified: !!raw.verified,
     available: raw.available || 'Immediate',
-    description: raw.description || ''
+    description: raw.description || '',
+    postedByPhone: raw.postedByPhone || '+91 99999 88888',
+    ownerName: raw.ownerName || 'Kabir Singh',
+    ownerPhone: raw.ownerPhone || '+91 98765 43210',
+    street: raw.street || 'Flat 4B, Sunrise Apartments, MG Road',
   }
 }
 
@@ -2549,6 +2893,24 @@ export default function App() {
   const [userProfile, setUserProfile] = useState<any>(null)
   const [listings, setListings] = useState<Listing[]>([])
   const [conversations, setConversations] = useState<Conversation[]>([])
+  const [unlockedListings, setUnlockedListings] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem('nestly_unlocked_listings')
+      return saved ? JSON.parse(saved) : {}
+    } catch (e) {
+      return {}
+    }
+  })
+
+  const handleUnlockListing = (id: string) => {
+    setUnlockedListings(prev => {
+      const next = { ...prev, [id]: true }
+      try {
+        localStorage.setItem('nestly_unlocked_listings', JSON.stringify(next))
+      } catch (e) {}
+      return next
+    })
+  }
 
   const getOrCreateGuestUser = () => {
     const storedUid = sessionStorage.getItem('nestly_user_uid')
@@ -2823,6 +3185,9 @@ export default function App() {
         {screen === 'listing-detail' && selectedListing && (
           <ListingDetailScreen
             listing={selectedListing}
+            isUnlocked={selectedListing.postedByUid === user?.uid || !!unlockedListings[selectedListing.id]}
+            onUnlock={handleUnlockListing}
+            userProfile={userProfile}
             onBack={() => setScreen(navTab)}
             onChat={async () => {
               if (!user) return
