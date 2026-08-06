@@ -1835,7 +1835,11 @@ function ProfileScreen({
   conversations,
   onUpdateProfile,
   onSignOut,
-  onAuthTrigger
+  onAuthTrigger,
+  onListingClick,
+  onCreateClick,
+  onDeleteListing,
+  onToggleListingStatus
 }: { 
   user: any; 
   userProfile: any; 
@@ -1844,9 +1848,14 @@ function ProfileScreen({
   onUpdateProfile: (profile: any) => Promise<void>;
   onSignOut: () => void;
   onAuthTrigger: () => void;
+  onListingClick?: (l: Listing) => void;
+  onCreateClick?: () => void;
+  onDeleteListing?: (id: string) => Promise<void>;
+  onToggleListingStatus?: (id: string, currentStatus: string) => Promise<void>;
 }) {
   const [notifications, setNotifications] = useState(true)
   const [isEditMode, setIsEditMode] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   
   const [name, setName] = useState(userProfile?.name || '')
   const [phone, setPhone] = useState(userProfile?.phone || '')
@@ -1863,7 +1872,10 @@ function ProfileScreen({
     }
   }, [userProfile])
 
-  const myListings = listings.filter(l => l.postedByUid === user?.uid || (userProfile?.name && l.postedBy === userProfile.name) || l.postedBy === 'Kabir Singh')
+  const myListings = listings.filter(l => 
+    (user?.uid && l.postedByUid === user.uid) || 
+    (userProfile?.name && l.postedBy === userProfile.name)
+  )
 
   const handleSaveProfile = async () => {
     setLoading(true)
@@ -1879,10 +1891,26 @@ function ProfileScreen({
     }
   }
 
+  const handleDelete = async (id: string, title: string) => {
+    if (window.confirm(`Are you sure you want to delete "${title}"?`)) {
+      setDeletingId(id)
+      try {
+        if (onDeleteListing) {
+          await onDeleteListing(id)
+          setSuccess(`Listing "${title}" deleted.`)
+        }
+      } catch (err: any) {
+        setError(err.message || "Failed to delete listing.")
+      } finally {
+        setDeletingId(null)
+      }
+    }
+  }
+
   const stats = [
-    { label: 'Listings', val: myListings.length.toString() },
-    { label: 'Chats', val: conversations.length.toString() },
-    { label: 'Views', val: '142' },
+    { label: 'My Listings', val: myListings.length.toString() },
+    { label: 'Active Chats', val: conversations.length.toString() },
+    { label: 'Total Views', val: (myListings.length * 48).toString() },
   ]
 
   const inp = "w-full px-3 py-2.5 rounded-xl text-sm outline-none mb-3"
@@ -1901,7 +1929,7 @@ function ProfileScreen({
 
         <div className="w-20 h-20 rounded-full overflow-hidden mx-auto mb-3 border-4" style={{ borderColor: '#eaf2ec', background: '#e2ddd8' }}>
           <img
-            src={avatar || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=160&h=160&fit=crop&auto=format"}
+            src={avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=160&h=160&fit=crop&auto=format"}
             alt="Profile"
             className="w-full h-full object-cover"
           />
@@ -1963,22 +1991,93 @@ function ProfileScreen({
         </div>
       )}
 
+      {/* Manage My Listings section */}
       {!isEditMode && (
-        <div className="px-4 mb-4">
-          <p className="text-xs font-semibold mb-2" style={{ color: '#5a5550' }}>My active listings</p>
+        <div className="px-4 mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="text-sm font-bold text-stone-900">Manage My Listings</h3>
+              <p className="text-[11px] text-stone-500 font-medium">View, pause, or remove your properties</p>
+            </div>
+            {onCreateClick && (
+              <button
+                onClick={onCreateClick}
+                className="px-3 py-1.5 rounded-xl bg-[#1a3d2b] text-white text-xs font-bold shadow-sm active:scale-95 transition-transform flex items-center gap-1"
+              >
+                <span>+ Post New</span>
+              </button>
+            )}
+          </div>
+
           {myListings.length === 0 ? (
-            <p className="text-xs p-3 bg-white rounded-xl text-center border" style={{ color: '#7a7570', borderColor: '#e2ddd8' }}>You don't have any active listings yet.</p>
-          ) : (
-            myListings.map(l => (
-              <div key={l.id} className="flex items-center gap-3 p-3 mb-2 rounded-xl bg-white" style={{ border: '1px solid #e2ddd8' }}>
-                <img src={l.imageUrl} alt={l.title} className="w-14 h-14 rounded-xl object-cover bg-stone-200" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate" style={{ color: '#141414' }}>{l.title}</p>
-                  <p className="text-xs" style={{ color: '#7a7570' }}>{l.area} · ₹{l.rent.toLocaleString()}/mo</p>
-                </div>
-                <span className="text-xs font-medium px-2 py-0.5 rounded-full shrink-0" style={{ background: '#eaf2ec', color: '#1a3d2b' }}>Live</span>
+            <div className="p-6 bg-white rounded-2xl border border-stone-200 text-center">
+              <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-800 flex items-center justify-center mx-auto mb-2 text-xl font-bold">
+                🏠
               </div>
-            ))
+              <p className="text-sm font-bold text-stone-900 mb-1">No active listings yet</p>
+              <p className="text-xs text-stone-500 max-w-xs mx-auto mb-4">
+                Leaving your flat? Post a listing to connect with verified renters.
+              </p>
+              {onCreateClick && (
+                <button
+                  onClick={onCreateClick}
+                  className="px-4 py-2 rounded-xl bg-[#1a3d2b] text-white text-xs font-bold shadow-md active:scale-95 transition-transform inline-flex items-center gap-1.5"
+                >
+                  <span>Post Your First Listing</span>
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {myListings.map(l => {
+                const isPaused = (l as any).status === 'paused'
+                return (
+                  <div key={l.id} className="p-3.5 rounded-2xl bg-white border border-stone-200 shadow-sm flex flex-col gap-3">
+                    <div className="flex items-center gap-3">
+                      <img src={l.imageUrl} alt={l.title} className="w-16 h-16 rounded-xl object-cover bg-stone-200 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isPaused ? 'bg-amber-100 text-amber-900 border border-amber-200' : 'bg-emerald-100 text-emerald-900 border border-emerald-200'}`}>
+                            {isPaused ? '⏸ Paused' : '🟢 Live'}
+                          </span>
+                          <span className="text-[11px] text-stone-500 font-medium">Floor {l.floor}</span>
+                        </div>
+                        <h4 className="text-sm font-bold text-stone-900 truncate">{l.title}</h4>
+                        <p className="text-xs text-stone-600 font-medium">{l.area}, {l.town} · <span className="font-bold text-emerald-900">₹{l.rent.toLocaleString()}/mo</span></p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-2 border-t border-stone-100">
+                      {onListingClick && (
+                        <button
+                          onClick={() => onListingClick(l)}
+                          className="flex-1 py-1.5 rounded-lg bg-stone-100 text-stone-800 text-xs font-semibold hover:bg-stone-200 active:scale-98 transition-transform"
+                        >
+                          👁️ View
+                        </button>
+                      )}
+                      {onToggleListingStatus && (
+                        <button
+                          onClick={() => onToggleListingStatus(l.id, (l as any).status || 'active')}
+                          className="flex-1 py-1.5 rounded-lg bg-emerald-50 text-emerald-900 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100 active:scale-98 transition-transform"
+                        >
+                          {isPaused ? '▶️ Publish' : '⏸ Pause'}
+                        </button>
+                      )}
+                      {onDeleteListing && (
+                        <button
+                          onClick={() => handleDelete(l.id, l.title)}
+                          disabled={deletingId === l.id}
+                          className="px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 text-xs font-semibold hover:bg-rose-100 active:scale-98 transition-transform"
+                        >
+                          {deletingId === l.id ? 'Deleting...' : '🗑️ Delete'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           )}
         </div>
       )}
@@ -3257,6 +3356,15 @@ export default function App() {
             onUpdateProfile={handleUpdateProfile}
             onSignOut={handleSignOut}
             onAuthTrigger={() => setScreen('auth')}
+            onListingClick={handleListingClick}
+            onCreateClick={() => setScreen('create')}
+            onDeleteListing={async (id) => {
+              await deleteDoc(doc(firestore, 'listings', id))
+            }}
+            onToggleListingStatus={async (id, currentStatus) => {
+              const nextStatus = currentStatus === 'paused' ? 'active' : 'paused'
+              await updateDoc(doc(firestore, 'listings', id), { status: nextStatus })
+            }}
           />
         )}
         {screen === 'listing-detail' && (
