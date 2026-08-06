@@ -981,7 +981,7 @@ function LocationPickerModal({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
-          <span className="truncate font-semibold">Location Pins: {selectedCoords.lat.toFixed(5)}, {selectedCoords.lng.toFixed(5)}</span>
+          <span className="truncate font-semibold">Verify the pointer is aligned with your building</span>
         </div>
         <button
           type="button"
@@ -1748,12 +1748,7 @@ function CreateScreen({ onClose, onPublish, userProfile }: { onClose: () => void
                 <span>Select location on map</span>
               </button>
             </div>
-            
-            {form.lat && form.lng && (
-              <p className="text-[10px] text-emerald-800 font-bold mb-4 text-center">
-                ✓ Map location pinned: {form.lat.toFixed(5)}, {form.lng.toFixed(5)}
-              </p>
-            )}
+
 
             <F label="Available from">
               <input className={inp} style={inpStyle} type="date" value={form.available} onChange={e => setForm(f => ({ ...f, available: e.target.value }))} />
