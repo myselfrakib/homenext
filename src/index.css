@@ -1,0 +1,77 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,300;1,9..144,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+@import 'tailwindcss';
+
+@theme {
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+
+  --color-ground: #f7f5f1;
+  --color-surface: #ffffff;
+  --color-forest: #1a3d2b;
+  --color-forest-mid: #2d6348;
+  --color-forest-light: #eaf2ec;
+  --color-amber: #d4652a;
+  --color-amber-light: #fdf0e8;
+  --color-ink: #141414;
+  --color-muted: #7a7570;
+  --color-hairline: #e2ddd8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-sans);
+  background: var(--color-ground);
+  color: var(--color-ink);
+}
+
+::-webkit-scrollbar { width: 0; height: 0; }
+* { scrollbar-width: none; }
+
+input, textarea, select, button {
+  font-family: inherit;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(212, 101, 42, 0.4);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 12px rgba(212, 101, 42, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(212, 101, 42, 0);
+  }
+}
+
+.animate-slideUp {
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Custom styling for Leaflet elements inside our app wrapper */
+.leaflet-container {
+  font-family: var(--font-sans) !important;
+}
+
+.accent-forest {
+  accent-color: var(--color-forest);
+}
