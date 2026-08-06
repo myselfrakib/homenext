@@ -2886,8 +2886,37 @@ export default function App() {
     sessionStorage.setItem('nestly_current_nav_tab', navTab)
   }, [navTab])
 
-  const [selectedListing, setSelectedListing] = useState<Listing | null>(null)
-  const [selectedConv, setSelectedConv] = useState<Conversation | null>(null)
+  const [selectedListing, setSelectedListing] = useState<Listing | null>(() => {
+    try {
+      const savedData = sessionStorage.getItem('nestly_selected_listing_data')
+      return savedData ? JSON.parse(savedData) : null
+    } catch (e) {
+      return null
+    }
+  })
+
+  const [selectedConv, setSelectedConv] = useState<Conversation | null>(() => {
+    try {
+      const savedData = sessionStorage.getItem('nestly_selected_conv_data')
+      return savedData ? JSON.parse(savedData) : null
+    } catch (e) {
+      return null
+    }
+  })
+
+  useEffect(() => {
+    if (selectedListing) {
+      sessionStorage.setItem('nestly_selected_listing_id', selectedListing.id)
+      sessionStorage.setItem('nestly_selected_listing_data', JSON.stringify(selectedListing))
+    }
+  }, [selectedListing])
+
+  useEffect(() => {
+    if (selectedConv) {
+      sessionStorage.setItem('nestly_selected_conv_id', selectedConv.id)
+      sessionStorage.setItem('nestly_selected_conv_data', JSON.stringify(selectedConv))
+    }
+  }, [selectedConv])
 
   const [user, setUser] = useState<any>(null)
   const [userProfile, setUserProfile] = useState<any>(null)
@@ -3085,13 +3114,61 @@ export default function App() {
     setScreen(tab)
   }
 
+  useEffect(() => {
+    if (screen === 'listing-detail' && listings.length > 0) {
+      const savedId = sessionStorage.getItem('nestly_selected_listing_id')
+      if (savedId) {
+        const match = listings.find(l => l.id === savedId)
+        if (match) {
+          setSelectedListing(match)
+        }
+      }
+    }
+  }, [listings, screen])
+
+  useEffect(() => {
+    if (screen === 'listing-detail' && !selectedListing) {
+      const timer = setTimeout(() => {
+        const savedData = sessionStorage.getItem('nestly_selected_listing_data')
+        if (savedData) {
+          try {
+            setSelectedListing(JSON.parse(savedData))
+            return
+          } catch (e) {}
+        }
+        setScreen('home')
+        setNavTab('home')
+      }, 1200)
+      return () => clearTimeout(timer)
+    }
+
+    if (screen === 'chat-detail' && !selectedConv) {
+      const timer = setTimeout(() => {
+        const savedData = sessionStorage.getItem('nestly_selected_conv_data')
+        if (savedData) {
+          try {
+            setSelectedConv(JSON.parse(savedData))
+            return
+          } catch (e) {}
+        }
+        setScreen('chat')
+        setNavTab('chat')
+      }, 1200)
+      return () => clearTimeout(timer)
+    }
+  }, [screen, selectedListing, selectedConv])
+
   const handleListingClick = (l: Listing) => {
     setSelectedListing(l)
+    sessionStorage.setItem('nestly_selected_listing_id', l.id)
+    sessionStorage.setItem('nestly_selected_listing_data', JSON.stringify(l))
     setScreen('listing-detail')
   }
 
   const handleConvClick = (c: Conversation) => {
     setSelectedConv(c)
+    sessionStorage.setItem('nestly_selected_conv_id', c.id)
+    sessionStorage.setItem('nestly_selected_conv_data', JSON.stringify(c))
     setScreen('chat-detail')
   }
 
@@ -3168,8 +3245,15 @@ export default function App() {
         {screen === 'chat' && (
           <ChatListScreen conversations={conversations} onConvClick={handleConvClick} />
         )}
-        {screen === 'chat-detail' && selectedConv && (
-          <ChatDetailScreen conv={selectedConv} onBack={() => setScreen('chat')} user={user} />
+        {screen === 'chat-detail' && (
+          selectedConv ? (
+            <ChatDetailScreen conv={selectedConv} onBack={() => setScreen('chat')} user={user} />
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full bg-[#f7f5f1] p-6 text-center">
+              <div className="w-8 h-8 border-4 border-[#1a3d2b]/30 border-t-[#1a3d2b] rounded-full animate-spin mb-3"></div>
+              <p className="text-sm font-semibold text-stone-600">Loading conversation...</p>
+            </div>
+          )
         )}
         {screen === 'profile' && (
           <ProfileScreen 
@@ -3182,46 +3266,53 @@ export default function App() {
             onAuthTrigger={() => setScreen('auth')}
           />
         )}
-        {screen === 'listing-detail' && selectedListing && (
-          <ListingDetailScreen
-            listing={selectedListing}
-            isUnlocked={selectedListing.postedByUid === user?.uid || !!unlockedListings[selectedListing.id]}
-            onUnlock={handleUnlockListing}
-            userProfile={userProfile}
-            onBack={() => setScreen(navTab)}
-            onChat={async () => {
-              if (!user) return
-              const convId = `conv_${selectedListing.id}_${user.uid}`
-              const convRef = doc(firestore, 'profiles', user.uid, 'conversations', convId)
-              const docSnap = await getDoc(convRef)
-              
-              let convData = docSnap.exists() ? docSnap.data() as Conversation : null
-              if (!convData) {
-                convData = {
-                  id: convId,
-                  name: selectedListing.postedBy,
-                  avatar: selectedListing.postedByAvatar,
-                  lastMsg: `Hi! I saw your listing for the ${selectedListing.title}.`,
-                  time: 'Just now',
-                  unread: 0,
-                  listing: `${selectedListing.title} · ${selectedListing.town}`
-                }
-                await setDoc(convRef, convData)
+        {screen === 'listing-detail' && (
+          selectedListing ? (
+            <ListingDetailScreen
+              listing={selectedListing}
+              isUnlocked={selectedListing.postedByUid === user?.uid || !!unlockedListings[selectedListing.id]}
+              onUnlock={handleUnlockListing}
+              userProfile={userProfile}
+              onBack={() => setScreen(navTab)}
+              onChat={async () => {
+                if (!user) return
+                const convId = `conv_${selectedListing.id}_${user.uid}`
+                const convRef = doc(firestore, 'profiles', user.uid, 'conversations', convId)
+                const docSnap = await getDoc(convRef)
                 
-                const msgId = 'welcome_' + Date.now()
-                await setDoc(doc(firestore, 'chats', convId, 'messages', msgId), {
-                  id: msgId,
-                  text: `Hi! I saw your listing for the ${selectedListing.title}.`,
-                  senderId: user.uid,
-                  time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                })
-              }
-              
-              setSelectedConv(convData)
-              setNavTab('chat')
-              setScreen('chat-detail')
-            }}
-          />
+                let convData = docSnap.exists() ? docSnap.data() as Conversation : null
+                if (!convData) {
+                  convData = {
+                    id: convId,
+                    name: selectedListing.postedBy,
+                    avatar: selectedListing.postedByAvatar,
+                    lastMsg: `Hi! I saw your listing for the ${selectedListing.title}.`,
+                    time: 'Just now',
+                    unread: 0,
+                    listing: `${selectedListing.title} · ${selectedListing.town}`
+                  }
+                  await setDoc(convRef, convData)
+                  
+                  const msgId = 'welcome_' + Date.now()
+                  await setDoc(doc(firestore, 'chats', convId, 'messages', msgId), {
+                    id: msgId,
+                    text: `Hi! I saw your listing for the ${selectedListing.title}.`,
+                    senderId: user.uid,
+                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                  })
+                }
+                
+                setSelectedConv(convData)
+                setNavTab('chat')
+                setScreen('chat-detail')
+              }}
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full bg-[#f7f5f1] p-6 text-center">
+              <div className="w-8 h-8 border-4 border-[#1a3d2b]/30 border-t-[#1a3d2b] rounded-full animate-spin mb-3"></div>
+              <p className="text-sm font-semibold text-stone-600">Loading space details...</p>
+            </div>
+          )
         )}
         {screen === 'auth' && (
           <AuthScreen 
