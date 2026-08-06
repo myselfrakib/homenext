@@ -15,7 +15,7 @@ const getOrCreateGuestUser = () => {
     uid: 'guest_' + Math.random().toString(36).substring(2, 11),
     isAnonymous: true,
     displayName: 'Guest User',
-    photoURL: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=160&h=160&fit=crop&auto=format',
+    photoURL: '',
     email: ''
   }
   sessionStorage.setItem('nestly_guest_user', JSON.stringify(newGuest))
@@ -1946,12 +1946,18 @@ function ProfileScreen({
           {isEditMode ? 'Cancel' : 'Edit profile'}
         </button>
 
-        <div className="w-20 h-20 rounded-full overflow-hidden mx-auto mb-3 border-4" style={{ borderColor: '#eaf2ec', background: '#e2ddd8' }}>
-          <img
-            src={avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=160&h=160&fit=crop&auto=format"}
-            alt="Profile"
-            className="w-full h-full object-cover"
-          />
+        <div className="w-20 h-20 rounded-full overflow-hidden mx-auto mb-3 border-4 flex items-center justify-center text-stone-400" style={{ borderColor: '#eaf2ec', background: '#e2ddd8' }}>
+          {avatar ? (
+            <img
+              src={avatar}
+              alt="Profile"
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          )}
         </div>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, color: '#141414' }}>{userProfile?.name || name || user?.displayName || 'User'}</h2>
         <p className="text-sm" style={{ color: '#7a7570' }}>{userProfile?.phone || phone || 'No phone number'} {(userProfile?.email || user?.email) ? `· ${userProfile?.email || user?.email}` : ''}</p>
@@ -3821,12 +3827,12 @@ export default function App() {
     const storedUid = sessionStorage.getItem('nestly_user_uid')
     const authType = sessionStorage.getItem('nestly_auth_type')
     if (storedUid && authType === 'guest') {
-      return { isAnonymous: true, uid: storedUid, displayName: 'Guest User' }
+      return { isAnonymous: true, uid: storedUid, displayName: 'Guest User', photoURL: '' }
     }
     const guestUid = 'guest_' + Date.now()
     sessionStorage.setItem('nestly_user_uid', guestUid)
     sessionStorage.setItem('nestly_auth_type', 'guest')
-    return { isAnonymous: true, uid: guestUid, displayName: 'Guest User' }
+    return { isAnonymous: true, uid: guestUid, displayName: 'Guest User', photoURL: '' }
   }
 
 
@@ -3920,7 +3926,7 @@ export default function App() {
           setUser(guestUser)
           setUserProfile({
             name: 'Guest User',
-            avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=160&h=160&fit=crop&auto=format',
+            avatar: '',
             phone: 'None',
             email: 'guest@nestly.com',
             joined: 'Just now'
@@ -4066,16 +4072,22 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (screen === 'listing-detail' && listings.length > 0) {
-      const savedId = sessionStorage.getItem('nestly_selected_listing_id')
-      if (savedId) {
-        const match = listings.find(l => l.id === savedId)
-        if (match) {
-          setSelectedListing(match)
+    if (screen === 'listing-detail') {
+      if (!user || user.isAnonymous) {
+        setScreen('auth')
+        return
+      }
+      if (listings.length > 0) {
+        const savedId = sessionStorage.getItem('nestly_selected_listing_id')
+        if (savedId) {
+          const match = listings.find(l => l.id === savedId)
+          if (match) {
+            setSelectedListing(match)
+          }
         }
       }
     }
-  }, [listings, screen])
+  }, [listings, screen, user])
 
   useEffect(() => {
     if (screen === 'listing-detail' && !selectedListing) {
@@ -4110,6 +4122,10 @@ export default function App() {
   }, [screen, selectedListing, selectedConv])
 
   const handleListingClick = (l: Listing) => {
+    if (!user || user.isAnonymous) {
+      setScreen('auth')
+      return
+    }
     setSelectedListing(l)
     sessionStorage.setItem('nestly_selected_listing_id', l.id)
     sessionStorage.setItem('nestly_selected_listing_data', JSON.stringify(l))
@@ -4296,7 +4312,7 @@ export default function App() {
               setUser(guestUser)
               setUserProfile({
                 name: 'Guest User',
-                avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=160&h=160&fit=crop&auto=format',
+                avatar: '',
                 phone: 'None',
                 email: 'guest@nestly.com',
                 joined: 'Just now'
