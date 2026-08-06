@@ -32,7 +32,7 @@ service cloud.firestore {
     // Create: Any authenticated user can publish a listing.
     // Update/Delete: Only the original poster (owner) can edit or remove a listing.
     match /listings/{listingId} {
-      allow read: if isAuthenticated();
+      allow read: if true;
       allow create: if isAuthenticated();
       allow update, delete: if isAuthenticated() && (
         resource.data.postedBy == request.auth.token.name || 
