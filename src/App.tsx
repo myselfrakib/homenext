@@ -979,37 +979,22 @@ function ListingDetailScreen({
     }
   }
 
+  const [unlockedState, setUnlockedState] = useState(false)
+  const unlocked = isUnlocked || unlockedState
+
   const handleTriggerPay = () => {
-    if (typeof (window as any).Razorpay !== 'undefined') {
-      try {
-        const options = {
-          key: "rzp_test_nestlyKey",
-          amount: unlockFee * 100,
-          currency: "INR",
-          name: "Nestly",
-          description: `5% Rent Access Fee for ${listing.title}`,
-          handler: function () {
-            onUnlock(listing.id)
-          },
-          prefill: {
-            name: userProfile?.name || "Guest User",
-            email: userProfile?.email || "user@nestly.com",
-            contact: userProfile?.phone || "+91 9876543210"
-          },
-          theme: { color: "#1a3d2b" }
-        }
-        const rzp = new (window as any).Razorpay(options)
-        rzp.open()
-      } catch (err) {
-        setShowRazorpay(true)
-      }
-    } else {
-      setShowRazorpay(true)
-    }
+    setShowRazorpay(true)
   }
 
   return (
     <div className="flex flex-col h-full bg-white relative">
+      {unlockedState && (
+        <div className="bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 flex items-center justify-between shadow-md animate-in slide-in-from-top z-20">
+          <span>🎉 Payment Successful! All owner details & exact map location unlocked.</span>
+          <button onClick={() => setUnlockedState(false)} className="text-white font-bold ml-2 text-sm">✕</button>
+        </div>
+      )}
+
       {/* Hero image */}
       <div className="relative" style={{ height: 260 }}>
         {listing.media && listing.media.length > 0 ? (
@@ -1069,12 +1054,12 @@ function ListingDetailScreen({
           </div>
 
           {/* Location details & Map option */}
-          <div className="p-3.5 rounded-2xl mb-4" style={{ background: isUnlocked ? '#f0fdf4' : '#fdf0e8', border: isUnlocked ? '1px solid #bbf7d0' : '1px solid #fecdd3' }}>
+          <div className="p-3.5 rounded-2xl mb-4" style={{ background: unlocked ? '#f0fdf4' : '#fdf0e8', border: unlocked ? '1px solid #bbf7d0' : '1px solid #fecdd3' }}>
             <div className="flex items-start gap-2 text-xs mb-1">
               <LocationIcon size={16} />
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-stone-900">{listing.area}, {listing.town}</p>
-                {isUnlocked ? (
+                {unlocked ? (
                   <p className="text-xs text-stone-700 mt-0.5 font-medium">📍 {listing.street || 'Exact street address unlocked'}</p>
                 ) : (
                   <div className="relative mt-1">
@@ -1089,7 +1074,7 @@ function ListingDetailScreen({
               </div>
             </div>
 
-            {isUnlocked ? (
+            {unlocked ? (
               <button
                 onClick={() => setShowMapModal(true)}
                 className="mt-2 w-full py-2.5 rounded-xl bg-[#1a3d2b] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-transform"
@@ -1140,13 +1125,13 @@ function ListingDetailScreen({
               <span className="text-xs font-bold text-stone-700 flex items-center gap-1">
                 👤 Property Owner Details
               </span>
-              {!isUnlocked && (
+              {!unlocked && (
                 <span className="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">
                   Locked
                 </span>
               )}
             </div>
-            {isUnlocked ? (
+            {unlocked ? (
               <div className="space-y-1.5 text-xs">
                 <p className="text-stone-900 font-semibold">Name: <span className="font-normal text-stone-800">{listing.ownerName || 'Kabir Singh'}</span></p>
                 <div className="text-stone-900 font-semibold flex items-center justify-between">
@@ -1170,7 +1155,7 @@ function ListingDetailScreen({
           {/* Posted by card */}
           <div className="p-3.5 rounded-2xl mb-6 bg-stone-50 border border-stone-200">
             <div className="flex items-center gap-3">
-              {isUnlocked ? (
+              {unlocked ? (
                 <img src={listing.postedByAvatar} alt={listing.postedBy} className="w-10 h-10 rounded-full object-cover bg-stone-200 shrink-0" />
               ) : (
                 <div className="w-10 h-10 rounded-full bg-stone-200 flex items-center justify-center shrink-0 text-stone-500 font-bold text-sm">
@@ -1180,7 +1165,7 @@ function ListingDetailScreen({
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-stone-500">Listed by</p>
                 <p className="text-sm font-bold text-stone-900 truncate">{listing.postedBy}</p>
-                {isUnlocked ? (
+                {unlocked ? (
                   <p className="text-xs text-stone-600 font-medium mt-0.5">📞 {listing.postedByPhone || '+91 99999 88888'}</p>
                 ) : (
                   <p className="text-[11px] text-stone-400 font-medium mt-0.5 select-none blur-[4px]">📞 +91 98765 43210</p>
@@ -1203,7 +1188,7 @@ function ListingDetailScreen({
               ₹{listing.rent.toLocaleString()}
             </p>
           </div>
-          {isUnlocked ? (
+          {unlocked ? (
             <button
               onClick={onChat}
               className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold text-white active:scale-95 transition-transform"
@@ -1242,6 +1227,7 @@ function ListingDetailScreen({
           feeAmount={unlockFee}
           onSuccess={() => {
             setShowRazorpay(false)
+            setUnlockedState(true)
             onUnlock(listing.id)
           }}
           onClose={() => setShowRazorpay(false)}
