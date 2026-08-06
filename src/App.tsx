@@ -2221,9 +2221,24 @@ function mapDatabaseListing(key: string, raw: any): Listing {
 }
 
 export default function App() {
-  const [onboarded, setOnboarded] = useState(false)
-  const [screen, setScreen] = useState<Screen>('home')
-  const [navTab, setNavTab] = useState<'home' | 'explore' | 'chat' | 'profile'>('home')
+  const [onboarded, setOnboarded] = useState(() => localStorage.getItem('nestly_onboarded') === 'true')
+  const [screen, setScreen] = useState<Screen>(() => {
+    const saved = sessionStorage.getItem('nestly_current_screen')
+    return (saved as Screen) || 'home'
+  })
+  const [navTab, setNavTab] = useState<'home' | 'explore' | 'chat' | 'profile'>(() => {
+    const saved = sessionStorage.getItem('nestly_current_nav_tab')
+    return (saved as any) || 'home'
+  })
+
+  useEffect(() => {
+    sessionStorage.setItem('nestly_current_screen', screen)
+  }, [screen])
+
+  useEffect(() => {
+    sessionStorage.setItem('nestly_current_nav_tab', navTab)
+  }, [navTab])
+
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null)
   const [selectedConv, setSelectedConv] = useState<Conversation | null>(null)
 
@@ -2405,6 +2420,7 @@ export default function App() {
   }
 
   const handleOnboardingDone = () => {
+    localStorage.setItem('nestly_onboarded', 'true')
     setOnboarded(true)
     setScreen('auth')
   }
