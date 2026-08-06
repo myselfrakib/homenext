@@ -2229,11 +2229,15 @@ export default function App() {
   const [conversations, setConversations] = useState<Conversation[]>([])
 
   const getOrCreateGuestUser = () => {
-    const stored = sessionStorage.getItem('nestly_guest_user')
-    if (stored) return JSON.parse(stored)
-    const guest = { isAnonymous: true, uid: 'guest_' + Date.now() }
-    sessionStorage.setItem('nestly_guest_user', JSON.stringify(guest))
-    return guest
+    const storedUid = sessionStorage.getItem('nestly_user_uid')
+    const authType = sessionStorage.getItem('nestly_auth_type')
+    if (storedUid && authType === 'guest') {
+      return { isAnonymous: true, uid: storedUid, displayName: 'Guest User' }
+    }
+    const guestUid = 'guest_' + Date.now()
+    sessionStorage.setItem('nestly_user_uid', guestUid)
+    sessionStorage.setItem('nestly_auth_type', 'guest')
+    return { isAnonymous: true, uid: guestUid, displayName: 'Guest User' }
   }
 
   useEffect(() => {
@@ -2269,7 +2273,8 @@ export default function App() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
       if (authUser) {
-        sessionStorage.removeItem('nestly_guest_user')
+        sessionStorage.setItem('nestly_user_uid', authUser.uid)
+        sessionStorage.setItem('nestly_auth_type', 'real')
         setUser(authUser)
         const profileDocRef = doc(firestore, 'profiles', authUser.uid)
         onSnapshot(profileDocRef, (snapshot) => {
@@ -2288,15 +2293,33 @@ export default function App() {
           }
         })
       } else {
-        const guestUser = getOrCreateGuestUser()
-        setUser(guestUser)
-        setUserProfile({
-          name: 'Guest User',
-          avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=160&h=160&fit=crop&auto=format',
-          phone: 'None',
-          email: 'guest@nestly.com',
-          joined: 'Just now'
-        })
+        const savedUid = sessionStorage.getItem('nestly_user_uid')
+        const authType = sessionStorage.getItem('nestly_auth_type')
+        if (savedUid && authType === 'real') {
+          const simulatedUser = {
+            uid: savedUid,
+            isAnonymous: false,
+            displayName: 'Logged In User',
+            email: ''
+          }
+          setUser(simulatedUser)
+          const profileDocRef = doc(firestore, 'profiles', savedUid)
+          onSnapshot(profileDocRef, (snapshot) => {
+            if (snapshot.exists()) {
+              setUserProfile(snapshot.data())
+            }
+          })
+        } else {
+          const guestUser = getOrCreateGuestUser()
+          setUser(guestUser)
+          setUserProfile({
+            name: 'Guest User',
+            avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=160&h=160&fit=crop&auto=format',
+            phone: 'None',
+            email: 'guest@nestly.com',
+            joined: 'Just now'
+          })
+        }
       }
     })
     return () => unsubscribe()
@@ -2346,7 +2369,8 @@ export default function App() {
   const handleSignOut = async () => {
     try {
       await signOut(auth)
-      sessionStorage.removeItem('nestly_guest_user')
+      sessionStorage.removeItem('nestly_user_uid')
+      sessionStorage.removeItem('nestly_auth_type')
       setUser(null)
       setUserProfile(null)
       setScreen('auth')
