@@ -3256,7 +3256,7 @@ export default function App() {
           selectedListing ? (
             <ListingDetailScreen
               listing={selectedListing}
-              isUnlocked={selectedListing.postedByUid === user?.uid || !!unlockedListings[selectedListing.id]}
+              isUnlocked={Boolean(user?.uid && selectedListing.postedByUid && selectedListing.postedByUid === user.uid) || !!unlockedListings[selectedListing.id]}
               onUnlock={handleUnlockListing}
               userProfile={userProfile}
               onBack={() => setScreen(navTab)}
