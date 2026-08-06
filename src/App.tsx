@@ -854,6 +854,146 @@ function MapModal({
   )
 }
 
+function LocationPickerModal({
+  initialLat,
+  initialLng,
+  onConfirm,
+  onClose
+}: {
+  initialLat: number | null;
+  initialLng: number | null;
+  onConfirm: (lat: number, lng: number) => void;
+  onClose: () => void;
+}) {
+  const mapContainerRef = useRef<HTMLDivElement>(null)
+  const mapRef = useRef<any>(null)
+  
+  const lat = initialLat || 22.5726
+  const lng = initialLng || 88.3639
+  
+  const [selectedCoords, setSelectedCoords] = useState({ lat, lng })
+  const [locating, setLocating] = useState(false)
+
+  useEffect(() => {
+    if (!mapContainerRef.current) return
+    const L = (window as any).L
+    if (!L) return
+
+    const map = L.map(mapContainerRef.current, {
+      zoomControl: false
+    }).setView([lat, lng], 15)
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(map)
+
+    L.control.zoom({ position: 'topright' }).addTo(map)
+
+    mapRef.current = map
+
+    map.on('move', () => {
+      const center = map.getCenter()
+      setSelectedCoords({ lat: center.lat, lng: center.lng })
+    })
+
+    return () => {
+      map.remove()
+      mapRef.current = null
+    }
+  }, [])
+
+  const handleLocateMe = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser.")
+      return
+    }
+    setLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords
+        if (mapRef.current) {
+          mapRef.current.setView([latitude, longitude], 16)
+        }
+        setLocating(false)
+      },
+      (err) => {
+        console.error(err)
+        alert("Failed to access your location. Please check browser permissions.")
+        setLocating(false)
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    )
+  }
+
+  const handleSave = () => {
+    onConfirm(selectedCoords.lat, selectedCoords.lng)
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-[200] flex flex-col bg-[#141414]/90 animate-fade-in" style={{ backdropFilter: 'blur(8px)' }}>
+      <div className="flex items-center justify-between px-4 py-4 bg-white border-b border-stone-200">
+        <div>
+          <h3 className="text-sm font-bold text-stone-900">Select Location on Map</h3>
+          <p className="text-[10px] text-stone-500 mt-0.5">Move the map to align the target pointer with your building</p>
+        </div>
+        <button onClick={onClose} className="p-1 rounded-full hover:bg-stone-100 text-stone-600">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div className="flex-1 relative bg-stone-100">
+        <div ref={mapContainerRef} className="w-full h-full z-0" />
+
+        <div className="absolute top-1/2 left-1/2 -mt-9 -ml-4 z-50 pointer-events-none flex flex-col items-center">
+          <div className="w-8 h-8 flex items-center justify-center">
+            <svg className="w-8 h-8 text-rose-600 drop-shadow-md filter" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+            </svg>
+          </div>
+          <div className="w-1.5 h-1.5 bg-rose-600 rounded-full border border-white -mt-0.5 shadow-md"></div>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleLocateMe}
+          className="absolute bottom-6 right-6 z-50 w-12 h-12 bg-white rounded-full shadow-xl flex items-center justify-center active:scale-95 transition-transform border border-stone-200"
+        >
+          {locating ? (
+            <div className="w-5 h-5 border-2 border-emerald-800/30 border-t-emerald-800 rounded-full animate-spin"></div>
+          ) : (
+            <svg className="w-6 h-6 text-stone-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8a4 4 0 110 8 4 4 0 010-8z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 2v2M12 20v2M2 12h2M20 12h2" />
+            </svg>
+          )}
+        </button>
+      </div>
+
+      <div className="bg-white px-4 py-4 border-t border-stone-200 flex flex-col gap-3">
+        <div className="flex items-center gap-2 text-stone-600 text-xs">
+          <svg className="w-4 h-4 text-stone-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <span className="truncate font-semibold">Location Pins: {selectedCoords.lat.toFixed(5)}, {selectedCoords.lng.toFixed(5)}</span>
+        </div>
+        <button
+          type="button"
+          onClick={handleSave}
+          className="w-full py-3 rounded-xl text-sm font-bold text-white shadow-md active:scale-[0.99] transition-transform"
+          style={{ background: '#1a3d2b' }}
+        >
+          Confirm Location Coordinates
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function RazorpayCheckoutModal({
   listing,
   feeAmount,
@@ -1296,6 +1436,48 @@ function CreateScreen({ onClose, onPublish, userProfile }: { onClose: () => void
   })
 
   const [fetchingLocation, setFetchingLocation] = useState(false)
+  const [suggestions, setSuggestions] = useState<any[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [showMapModal, setShowMapModal] = useState(false)
+
+  useEffect(() => {
+    if (!form.town.trim() || form.town.length < 3) {
+      setSuggestions([])
+      return
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(form.town)}&countrycodes=in&addressdetails=1&limit=5`)
+        const data = await res.json()
+        if (data) {
+          setSuggestions(data)
+        }
+      } catch (err) {
+        console.error("Autocompletion error:", err)
+      }
+    }, 400)
+    return () => clearTimeout(timer)
+  }, [form.town])
+
+  const handleSelectSuggestion = (item: any) => {
+    const addr = item.address || {}
+    const postcode = addr.postcode || ''
+    const locality = addr.suburb || addr.neighbourhood || addr.village || addr.suburb || addr.locality || item.display_name.split(',')[0]
+    const districtVal = addr.city_district || addr.district || addr.county || addr.city || ''
+    const stateVal = addr.state || ''
+    
+    setForm(f => ({
+      ...f,
+      town: locality,
+      district: districtVal,
+      state: stateVal,
+      pin: postcode,
+      lat: parseFloat(item.lat),
+      lng: parseFloat(item.lon)
+    }))
+    setShowSuggestions(false)
+    setSuggestions([])
+  }
 
   const handleAutofillAddress = () => {
     if (!navigator.geolocation) {
@@ -1496,34 +1678,36 @@ function CreateScreen({ onClose, onPublish, userProfile }: { onClose: () => void
               <span>Your exact address is kept private. Searchers will only see your town and area.</span>
             </div>
 
-            <button
-              type="button"
-              onClick={handleAutofillAddress}
-              disabled={fetchingLocation}
-              className="w-full py-2.5 mb-4 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all"
-              style={{ 
-                background: '#eaf2ec', 
-                color: '#1a3d2b', 
-                border: '1.5px solid #1a3d2b' 
-              }}
-            >
-              {fetchingLocation ? (
-                <>
-                  <div className="w-3.5 h-3.5 border-2 border-[#1a3d2b]/30 border-t-[#1a3d2b] rounded-full animate-spin"></div>
-                  <span>Fetching address details...</span>
-                </>
-              ) : (
-                <>
-                  <span className="text-sm">📍</span>
-                  <span>Auto-detect address & PIN</span>
-                </>
-              )}
-            </button>
             <F label="Street / flat number (private)">
               <input className={inp} style={inpStyle} placeholder="Flat 4B, Sunrise Apartments, MG Road" value={form.street} onChange={e => setForm(f => ({ ...f, street: e.target.value }))} />
             </F>
             <F label="Town / locality (shown publicly)">
-              <input className={inp} style={inpStyle} placeholder="e.g. Andheri West" value={form.town} onChange={e => setForm(f => ({ ...f, town: e.target.value }))} />
+              <div className="relative">
+                <input 
+                  className={inp} 
+                  style={inpStyle} 
+                  placeholder="e.g. Andheri West" 
+                  value={form.town} 
+                  onChange={e => {
+                    setForm(f => ({ ...f, town: e.target.value }))
+                    setShowSuggestions(true)
+                  }} 
+                />
+                {showSuggestions && suggestions.length > 0 && (
+                  <div className="absolute left-0 right-0 z-50 mt-1 max-h-48 overflow-y-auto rounded-xl border border-stone-200 bg-white shadow-lg">
+                    {suggestions.map((item, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => handleSelectSuggestion(item)}
+                        className="w-full px-3 py-2 text-left text-xs hover:bg-stone-50 border-b border-stone-100 last:border-0 truncate font-semibold text-stone-700"
+                      >
+                        {item.display_name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </F>
             <div className="grid grid-cols-2 gap-3">
               <F label="District">
@@ -1536,6 +1720,27 @@ function CreateScreen({ onClose, onPublish, userProfile }: { onClose: () => void
             <F label="PIN code (private)">
               <input className={inp} style={inpStyle} placeholder="400053" maxLength={6} value={form.pin} onChange={e => setForm(f => ({ ...f, pin: e.target.value }))} />
             </F>
+
+            <button
+              type="button"
+              onClick={() => setShowMapModal(true)}
+              className="w-full py-2.5 mb-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all"
+              style={{ 
+                background: '#eaf2ec', 
+                color: '#1a3d2b', 
+                border: '1.5px solid #1a3d2b' 
+              }}
+            >
+              <span className="text-sm">📍</span>
+              <span>Select location on map</span>
+            </button>
+            
+            {form.lat && form.lng && (
+              <p className="text-[10px] text-emerald-800 font-bold mb-4 text-center">
+                ✓ Map location pinned: {form.lat.toFixed(5)}, {form.lng.toFixed(5)}
+              </p>
+            )}
+
             <F label="Available from">
               <input className={inp} style={inpStyle} type="date" value={form.available} onChange={e => setForm(f => ({ ...f, available: e.target.value }))} />
             </F>
@@ -1548,6 +1753,17 @@ function CreateScreen({ onClose, onPublish, userProfile }: { onClose: () => void
                 onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
               />
             </F>
+
+            {showMapModal && (
+              <LocationPickerModal
+                initialLat={form.lat}
+                initialLng={form.lng}
+                onConfirm={(lat, lng) => {
+                  setForm(f => ({ ...f, lat, lng }))
+                }}
+                onClose={() => setShowMapModal(false)}
+              />
+            )}
           </>
         )}
 
