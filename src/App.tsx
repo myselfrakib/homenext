@@ -535,49 +535,38 @@ function HomeScreen({ listings, onListingClick }: { listings: Listing[]; onListi
           zIndex: 10,
         }}
       >
-        {/* Greeting row */}
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <p className="text-xs font-semibold tracking-wide uppercase" style={{ color: '#b5afa9', letterSpacing: '0.08em' }}>Good morning</p>
-            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 30, fontWeight: 600, lineHeight: 1.1, color: '#141414', marginTop: 2 }}>
-              Find your next{' '}
-              <em style={{ color: '#1a3d2b', fontStyle: 'italic' }}>home.</em>
-            </h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              className="w-9 h-9 rounded-xl flex items-center justify-center"
-              style={{ background: '#fff', border: '1px solid #e2ddd8', color: '#5a5550', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
-            >
-              <FilterIcon />
-            </button>
-            <div
-              className="w-10 h-10 rounded-full overflow-hidden bg-stone-200"
-              style={{ border: '2px solid #1a3d2b' }}
-            >
-              <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop&auto=format" alt="You" className="w-full h-full object-cover" />
+        <div className="flex items-center gap-2">
+          {/* Search bar */}
+          <div className="relative flex-1">
+            <div className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: '#9d9690' }}>
+              <SearchIcon />
             </div>
+            <input
+              type="text"
+              placeholder="Search area, city, or type…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-3 rounded-2xl text-sm outline-none font-sans"
+              style={{
+                background: '#fff',
+                border: '1px solid #e2ddd8',
+                color: '#141414',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+              }}
+            />
           </div>
-        </div>
-
-        {/* Search bar */}
-        <div className="relative">
-          <div className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: '#9d9690' }}>
-            <SearchIcon />
+          <button
+            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: '#fff', border: '1px solid #e2ddd8', color: '#5a5550', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
+          >
+            <FilterIcon />
+          </button>
+          <div
+            className="w-10 h-10 rounded-full overflow-hidden bg-stone-200 shrink-0"
+            style={{ border: '2px solid #1a3d2b' }}
+          >
+            <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop&auto=format" alt="You" className="w-full h-full object-cover" />
           </div>
-          <input
-            type="text"
-            placeholder="Search area, city, or type…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 rounded-2xl text-sm outline-none"
-            style={{
-              background: '#fff',
-              border: '1px solid #e2ddd8',
-              color: '#141414',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-            }}
-          />
         </div>
       </div>
 
