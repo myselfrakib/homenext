@@ -2990,7 +2990,7 @@ function AdminDashboard({
     }
   }
 
-  const pendingListings = listings.filter(l => l.status === 'pending')
+  const pendingListings = listings.filter(l => l.status === 'pending' || l.status === 'rejected')
   const featuredListings = listings.filter(l => l.featured)
 
   return (
@@ -3048,43 +3048,63 @@ function AdminDashboard({
             {pendingListings.length === 0 ? (
               <div className="text-center py-12 text-slate-500">
                 <span className="text-3xl block mb-2">🎉</span>
-                <p className="text-sm font-semibold">No pending space reviews!</p>
+                <p className="text-sm font-semibold">No unapproved space reviews!</p>
                 <p className="text-xs text-slate-400 mt-1">All listings are up-to-date.</p>
               </div>
             ) : (
-              pendingListings.map(l => (
-                <div key={l.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-3">
-                  <div className="flex gap-3">
-                    <img src={l.imageUrl} alt="" className="w-16 h-16 rounded-xl object-cover bg-slate-100 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-bold text-slate-900 truncate">{l.title}</h4>
-                      <p className="text-xs text-slate-500 font-medium">{l.area}, {l.town}</p>
-                      <p className="text-xs text-indigo-600 font-bold mt-1">₹{l.rent.toLocaleString()}/mo</p>
-                      <p className="text-[10px] text-slate-400 mt-1 truncate">Lister: {l.postedBy}</p>
+              pendingListings.map(l => {
+                const isRejected = l.status === 'rejected'
+                let badgeClass = 'bg-yellow-50 text-yellow-700 border-yellow-250'
+                let badgeText = '⏳ Pending Review'
+                if (isRejected) {
+                  badgeClass = 'bg-rose-50 text-rose-700 border-rose-200'
+                  badgeText = '🔴 Rejected'
+                }
+
+                return (
+                  <div key={l.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-3">
+                    <div className="flex gap-3">
+                      <img src={l.imageUrl} alt="" className="w-16 h-16 rounded-xl object-cover bg-slate-100 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${badgeClass}`}>
+                            {badgeText}
+                          </span>
+                        </div>
+                        <h4 className="text-sm font-bold text-slate-900 truncate">{l.title}</h4>
+                        <p className="text-xs text-slate-500 font-medium">{l.area}, {l.town}</p>
+                        <p className="text-xs text-indigo-600 font-bold mt-1">₹{l.rent.toLocaleString()}/mo</p>
+                        <p className="text-[10px] text-slate-400 mt-1 truncate">Lister: {l.postedBy}</p>
+                        {isRejected && l.rejectionReason && (
+                          <div className="mt-1.5 p-2 rounded-lg bg-rose-50/50 border border-rose-100 text-[10px] text-rose-700 leading-normal">
+                            <span className="font-bold">Rejection Reason:</span> {l.rejectionReason}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-2 border-t border-slate-100 pt-3">
+                      <button
+                        onClick={() => onListingClick(l)}
+                        className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-xs font-semibold rounded-xl text-slate-700 transition-colors"
+                      >
+                        Preview
+                      </button>
+                      <button
+                        onClick={() => handleApprove(l.id)}
+                        className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-xs font-semibold rounded-xl text-white shadow-sm shadow-indigo-600/10 transition-colors"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => triggerReject(l.id)}
+                        className="flex-1 py-2 bg-rose-50 hover:bg-rose-100 text-xs font-semibold rounded-xl text-rose-600 border border-rose-200 transition-colors"
+                      >
+                        {isRejected ? 'Change Reason' : 'Reject'}
+                      </button>
                     </div>
                   </div>
-                  <div className="flex gap-2 border-t border-slate-100 pt-3">
-                    <button
-                      onClick={() => onListingClick(l)}
-                      className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-xs font-semibold rounded-xl text-slate-700 transition-colors"
-                    >
-                      Preview
-                    </button>
-                    <button
-                      onClick={() => handleApprove(l.id)}
-                      className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-xs font-semibold rounded-xl text-white shadow-sm shadow-indigo-600/10 transition-colors"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => triggerReject(l.id)}
-                      className="flex-1 py-2 bg-rose-50 hover:bg-rose-100 text-xs font-semibold rounded-xl text-rose-600 border border-rose-200 transition-colors"
-                    >
-                      Reject
-                    </button>
-                  </div>
-                </div>
-              ))
+                )
+              })
             )}
           </>
         )}
