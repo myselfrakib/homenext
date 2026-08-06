@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { auth, firestore, storage } from './firebase'
 import { onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
-import { collection, doc, getDoc, getDocs, setDoc, updateDoc, onSnapshot } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot } from 'firebase/firestore'
 import { ref as sRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 
 const getOrCreateGuestUser = () => {
