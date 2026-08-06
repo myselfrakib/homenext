@@ -1425,13 +1425,15 @@ function ProfileScreen({
               </button>
             </div>
           </div>
-          <button
-            onClick={onSignOut}
-            className="w-full mt-3 py-3 rounded-xl text-sm font-semibold"
-            style={{ background: '#fff', border: '1px solid #e2ddd8', color: '#d4652a' }}
-          >
-            Sign out
-          </button>
+          {!user?.isAnonymous && (
+            <button
+              onClick={onSignOut}
+              className="w-full mt-3 py-3 rounded-xl text-sm font-semibold"
+              style={{ background: '#fff', border: '1px solid #e2ddd8', color: '#d4652a' }}
+            >
+              Sign out
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -2180,7 +2182,15 @@ export default function App() {
   }
 
   const handleSignOut = async () => {
-    await signOut(auth)
+    try {
+      await signOut(auth)
+      setUser(null)
+      setUserProfile(null)
+      setScreen('home')
+      setNavTab('home')
+    } catch (err) {
+      console.error(err)
+    }
   }
 
   const handleSignIn = async (emailVal: string, passVal: string) => {
