@@ -1441,6 +1441,7 @@ function CreateScreen({ onClose, onPublish, userProfile }: { onClose: () => void
   const [suggestions, setSuggestions] = useState<any[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [showMapModal, setShowMapModal] = useState(false)
+  const [showMapError, setShowMapError] = useState(false)
 
   useEffect(() => {
     if (!form.town.trim() || form.town.length < 3) {
@@ -1576,9 +1577,7 @@ function CreateScreen({ onClose, onPublish, userProfile }: { onClose: () => void
       return form.town.trim().length > 0 && 
              form.district.trim().length > 0 && 
              form.pin.trim().length > 0 && 
-             form.available.trim().length > 0 &&
-             form.lat !== null &&
-             form.lng !== null
+             form.available.trim().length > 0
     }
     return true
   }
@@ -1725,19 +1724,30 @@ function CreateScreen({ onClose, onPublish, userProfile }: { onClose: () => void
               <input className={inp} style={inpStyle} placeholder="400053" maxLength={6} value={form.pin} onChange={e => setForm(f => ({ ...f, pin: e.target.value }))} />
             </F>
 
-            <button
-              type="button"
-              onClick={() => setShowMapModal(true)}
-              className="w-full py-2.5 mb-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all"
-              style={{ 
-                background: '#eaf2ec', 
-                color: '#1a3d2b', 
-                border: '1.5px solid #1a3d2b' 
-              }}
-            >
-              <span className="text-sm">📍</span>
-              <span>Select location on map</span>
-            </button>
+            <div className="relative mb-2">
+              {showMapError && (
+                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-72 bg-rose-600 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow-lg z-[150] text-center animate-bounce">
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-2 h-2 bg-rose-600 rotate-45"></div>
+                  📍 This is a mandatory step. You have to select the location on the map to continue.
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowMapError(false)
+                  setShowMapModal(true)
+                }}
+                className="w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all"
+                style={{ 
+                  background: showMapError ? '#fdf0e8' : '#eaf2ec', 
+                  color: showMapError ? '#d4652a' : '#1a3d2b', 
+                  border: showMapError ? '1.5px solid #d4652a' : '1.5px solid #1a3d2b' 
+                }}
+              >
+                <span className="text-sm">📍</span>
+                <span>Select location on map</span>
+              </button>
+            </div>
             
             {form.lat && form.lng && (
               <p className="text-[10px] text-emerald-800 font-bold mb-4 text-center">
@@ -1764,6 +1774,7 @@ function CreateScreen({ onClose, onPublish, userProfile }: { onClose: () => void
                 initialLng={form.lng}
                 onConfirm={async (latVal, lngVal) => {
                   setForm(f => ({ ...f, lat: latVal, lng: lngVal }))
+                  setShowMapError(false)
 
                   const isManualEmpty = !form.town.trim() || !form.district.trim() || !form.state.trim() || !form.pin.trim()
                   if (isManualEmpty) {
@@ -1903,6 +1914,10 @@ function CreateScreen({ onClose, onPublish, userProfile }: { onClose: () => void
         )}
         <button
           onClick={async () => {
+            if (step === 2 && (form.lat === null || form.lng === null)) {
+              setShowMapError(true)
+              return
+            }
             if (!isStepValid() || publishing) return
             if (step < 3) {
               setStep(s => s + 1)
