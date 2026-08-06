@@ -1215,9 +1215,9 @@ function ListingDetailScreen({
           ) : (
             <button
               onClick={handleTriggerPay}
-              className="flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-bold text-white bg-[#1a3d2b] shadow-lg shadow-[#1a3d2b]/20 active:scale-95 transition-transform"
+              className="flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-bold text-white bg-[#1a3d2b] shadow-lg shadow-[#1a3d2b]/20 active:scale-95 transition-transform"
             >
-              <span>💳 Pay ₹{unlockFee.toLocaleString()} (5% rent)</span>
+              <span>💳 Pay to unlock (₹{unlockFee.toLocaleString()})</span>
             </button>
           )}
         </div>
