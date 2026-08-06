@@ -838,7 +838,59 @@ function CreateScreen({ onClose, onPublish }: { onClose: () => void; onPublish: 
     furnished: 'Unfurnished',
     available: '',
     tags: [] as string[],
+    lat: null as number | null,
+    lng: null as number | null,
   })
+
+  const [fetchingLocation, setFetchingLocation] = useState(false)
+
+  const handleAutofillAddress = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser.")
+      return
+    }
+    setFetchingLocation(true)
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude
+        const lon = position.coords.longitude
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1`)
+          const data = await res.json()
+          if (data && data.address) {
+            const addr = data.address
+            const postcode = addr.postcode || ''
+            const locality = addr.suburb || addr.neighbourhood || addr.village || addr.locality || ''
+            const districtVal = addr.city_district || addr.district || addr.county || addr.city || ''
+            const stateVal = addr.state || ''
+            
+            setForm(f => ({
+              ...f,
+              lat,
+              lng: lon,
+              pin: postcode,
+              town: locality,
+              district: districtVal,
+              state: stateVal
+            }))
+          } else {
+            alert("Could not fetch location details.")
+          }
+        } catch (err) {
+          console.error("Reverse geocoding error", err)
+          alert("Error fetching address details.")
+        } finally {
+          setFetchingLocation(false)
+        }
+      },
+      (err) => {
+        console.error("Geolocation error", err)
+        alert("Failed to get your location. Please check your location permissions.")
+        setFetchingLocation(false)
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    )
+  }
 
   const tagOptions = ['Parking', 'Pet Friendly', 'WiFi Ready', 'Power Backup', 'Gated', 'CCTV', 'Water 24/7', 'Gym', 'Lift']
 
@@ -854,7 +906,10 @@ function CreateScreen({ onClose, onPublish }: { onClose: () => void; onPublish: 
       return form.title.trim().length > 0 && form.rent.trim().length > 0
     }
     if (step === 2) {
-      return form.town.trim().length > 0 && form.district.trim().length > 0
+      return form.town.trim().length > 0 && 
+             form.district.trim().length > 0 && 
+             form.pin.trim().length > 0 && 
+             form.available.trim().length > 0
     }
     return true
   }
@@ -942,6 +997,30 @@ function CreateScreen({ onClose, onPublish }: { onClose: () => void; onPublish: 
               <LocationIcon size={13} />
               <span>Your exact address is kept private. Searchers will only see your town and area.</span>
             </div>
+
+            <button
+              type="button"
+              onClick={handleAutofillAddress}
+              disabled={fetchingLocation}
+              className="w-full py-2.5 mb-4 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all"
+              style={{ 
+                background: '#eaf2ec', 
+                color: '#1a3d2b', 
+                border: '1.5px solid #1a3d2b' 
+              }}
+            >
+              {fetchingLocation ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-[#1a3d2b]/30 border-t-[#1a3d2b] rounded-full animate-spin"></div>
+                  <span>Fetching address details...</span>
+                </>
+              ) : (
+                <>
+                  <span className="text-sm">📍</span>
+                  <span>Auto-detect address & PIN</span>
+                </>
+              )}
+            </button>
             <F label="Street / flat number (private)">
               <input className={inp} style={inpStyle} placeholder="Flat 4B, Sunrise Apartments, MG Road" value={form.street} onChange={e => setForm(f => ({ ...f, street: e.target.value }))} />
             </F>
@@ -2472,26 +2551,29 @@ export default function App() {
               const listingsCol = collection(firestore, 'listings')
               const newListingDoc = doc(listingsCol)
               
-              const query = `${newListingData.town}, ${newListingData.area || ''}`.trim()
               let coords: [number, number] = [19.0760, 72.8777] // default Mumbai
-              
-              const q = query.toLowerCase()
-              for (const [key, val] of Object.entries(CITY_COORDS)) {
-                if (q.includes(key) || key.includes(q)) {
-                  coords = val
-                  break
-                }
-              }
-              
-              if (query.length > 2) {
-                try {
-                  const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`)
-                  const data = await res.json()
-                  if (data && data.length > 0) {
-                    coords = [parseFloat(data[0].lat), parseFloat(data[0].lon)]
+              if (newListingData.lat !== undefined && newListingData.lng !== undefined && newListingData.lat !== null && newListingData.lng !== null) {
+                coords = [newListingData.lat, newListingData.lng]
+              } else {
+                const query = `${newListingData.town}, ${newListingData.area || ''}`.trim()
+                const q = query.toLowerCase()
+                for (const [key, val] of Object.entries(CITY_COORDS)) {
+                  if (q.includes(key) || key.includes(q)) {
+                    coords = val
+                    break
                   }
-                } catch (e) {
-                  console.error(e)
+                }
+                
+                if (query.length > 2) {
+                  try {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`)
+                    const data = await res.json()
+                    if (data && data.length > 0) {
+                      coords = [parseFloat(data[0].lat), parseFloat(data[0].lon)]
+                    }
+                  } catch (e) {
+                    console.error(e)
+                  }
                 }
               }
 
