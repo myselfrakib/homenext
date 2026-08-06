@@ -1,0 +1,33 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper: Is the user authenticated?
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Listings photos:
+    // Read: Anyone can view listing photos.
+    // Write: Any authenticated user can upload photos to the listings folder.
+    match /listings/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    // Profile avatars:
+    // Read: Anyone can view avatars.
+    // Write: Authenticated users can write to their own uid directory.
+    match /profiles/{uid}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAuthenticated() && request.auth.uid == uid;
+    }
+
+    // Chat attachments:
+    // Read/Write: Authenticated participants of the chat.
+    match /chats/{chatId}/{allPaths=**} {
+      allow read, write: if isAuthenticated();
+    }
+  }
+}
