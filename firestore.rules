@@ -16,14 +16,14 @@ service cloud.firestore {
     // Helper: Check if the user is an approved admin
     function isAdmin() {
       return isAuthenticated() && 
-        exists(/databases/$(database)/documents/creators/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/creators/$(request.auth.uid)).data.isAdmin == true;
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isAdmin == true;
     }
 
-    // --- Creator Profiles ---
+    // --- Admin Profiles ---
     // Any authenticated user can create their admin request (isAdmin starts false)
     // Only the admin themselves or another admin can read their own doc
-    match /creators/{uid} {
+    match /admins/{uid} {
       allow read: if isOwner(uid) || isAdmin();
       allow create: if isOwner(uid);
       allow update, delete: if isAdmin();

@@ -3860,7 +3860,7 @@ export default function App() {
           try {
             // Give 100ms for Firebase Auth token to sync with Firestore
             await new Promise(resolve => setTimeout(resolve, 100))
-            const adminDocRef = doc(firestore, 'creators', authUser.uid)
+            const adminDocRef = doc(firestore, 'admins', authUser.uid)
             const adminDoc = await getDoc(adminDocRef)
             if (adminDoc.exists() && adminDoc.data()?.isAdmin === true) {
               isAdminUser = true
@@ -4012,7 +4012,7 @@ export default function App() {
 
   const handleAdminSignIn = async (emailVal: string, passVal: string): Promise<boolean> => {
     const credentials = await signInWithEmailAndPassword(auth, emailVal, passVal)
-    const adminDocRef = doc(firestore, 'creators', credentials.user.uid)
+    const adminDocRef = doc(firestore, 'admins', credentials.user.uid)
     const adminDoc = await getDoc(adminDocRef)
     if (adminDoc.exists() && adminDoc.data()?.isAdmin === true) {
       sessionStorage.setItem('nestly_user_uid', credentials.user.uid)
@@ -4037,7 +4037,7 @@ export default function App() {
       email: emailVal,
       createdAt: new Date().toISOString()
     }
-    await setDoc(doc(firestore, 'creators', credentials.user.uid), adminData)
+    await setDoc(doc(firestore, 'admins', credentials.user.uid), adminData)
     await signOut(auth)
   }
 
