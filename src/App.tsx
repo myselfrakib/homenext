@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
-import { auth, firestore } from './firebase'
+import { auth, firestore, storage } from './firebase'
 import { onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc, onSnapshot } from 'firebase/firestore'
+import { ref as sRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 
 const getOrCreateGuestUser = () => {
   let guest = sessionStorage.getItem('nestly_guest_user')
@@ -698,24 +699,41 @@ function ListingDetailScreen({
     <div className="flex flex-col h-full bg-white">
       {/* Hero image */}
       <div className="relative" style={{ height: 260 }}>
-        <img
-          src={listing.imageUrl}
-          alt={listing.title}
-          className="w-full h-full object-cover bg-stone-200"
-        />
+        {listing.media && listing.media.length > 0 ? (
+          <div className="w-full h-full flex overflow-x-auto snap-x snap-mandatory">
+            {listing.media.map((item: any, idx: number) => (
+              <div key={idx} className="w-full h-full shrink-0 snap-start relative">
+                {item.type === 'video' ? (
+                  <video src={item.url} controls className="w-full h-full object-cover bg-black" />
+                ) : (
+                  <img src={item.url} alt={listing.title} className="w-full h-full object-cover bg-stone-200" />
+                )}
+                <span className="absolute top-12 right-4 text-[10px] font-bold px-2 py-0.5 rounded-full text-white bg-black/60 z-10">
+                  {idx + 1} / {listing.media.length}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <img
+            src={listing.imageUrl}
+            alt={listing.title}
+            className="w-full h-full object-cover bg-stone-200"
+          />
+        )}
         <div
-          className="absolute inset-0"
+          className="absolute inset-0 pointer-events-none"
           style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.25) 0%, transparent 40%)' }}
         />
         <button
           onClick={onBack}
-          className="absolute top-12 left-4 w-9 h-9 rounded-full flex items-center justify-center"
+          className="absolute top-12 left-4 w-9 h-9 rounded-full flex items-center justify-center z-10"
           style={{ background: 'rgba(255,255,255,0.9)' }}
         >
           <BackIcon />
         </button>
         <div
-          className="absolute bottom-4 left-4 text-white text-xs font-semibold px-2 py-1 rounded-full"
+          className="absolute bottom-4 left-4 text-white text-xs font-semibold px-2 py-1 rounded-full z-10"
           style={{ background: listing.available === 'Immediate' ? '#d4652a' : '#1a3d2b' }}
         >
           {listing.available}
@@ -892,7 +910,34 @@ function CreateScreen({ onClose, onPublish }: { onClose: () => void; onPublish: 
     )
   }
 
-  const tagOptions = ['Parking', 'Pet Friendly', 'WiFi Ready', 'Power Backup', 'Gated', 'CCTV', 'Water 24/7', 'Gym', 'Lift']
+  const [mediaFiles, setMediaFiles] = useState<{ url: string; type: 'image' | 'video' }[]>([])
+  const [uploadingMedia, setUploadingMedia] = useState(false)
+  const mediaInputRef = useRef<HTMLInputElement>(null)
+
+  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+    setUploadingMedia(true)
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        const storagePath = `listings/${Date.now()}_${file.name}`
+        const fileRef = sRef(storage, storagePath)
+        await uploadBytes(fileRef, file)
+        const downloadUrl = await getDownloadURL(fileRef)
+        const type = file.type.startsWith('video/') ? 'video' : 'image'
+        setMediaFiles(prev => [...prev, { url: downloadUrl, type }])
+      }
+    } catch (err) {
+      console.error(err)
+      alert("Error uploading media files. Please try again.")
+    } finally {
+      setUploadingMedia(false)
+      if (mediaInputRef.current) mediaInputRef.current.value = ''
+    }
+  }
+
+  const tagOptions = ['Parking', 'Pet Friendly', 'Couple Friendly', 'WiFi Ready', 'Power Backup', 'Gated', 'CCTV', 'Water 24/7', 'Gym', 'Lift']
 
   const toggleTag = (t: string) => {
     setForm(f => ({
@@ -1055,15 +1100,57 @@ function CreateScreen({ onClose, onPublish }: { onClose: () => void; onPublish: 
 
         {step === 3 && (
           <>
-            {/* Photo upload placeholder */}
+            <input
+              type="file"
+              accept="image/*,video/*"
+              multiple
+              onChange={handleMediaUpload}
+              ref={mediaInputRef}
+              style={{ display: 'none' }}
+            />
             <div
+              onClick={() => mediaInputRef.current?.click()}
               className="flex flex-col items-center justify-center rounded-2xl mb-4 gap-2 cursor-pointer active:scale-[0.98] transition-transform"
               style={{ background: '#fff', border: '2px dashed #e2ddd8', minHeight: 160 }}
             >
-              <CameraIcon />
-              <p className="text-sm font-semibold" style={{ color: '#5a5550' }}>Upload photos & videos</p>
-              <p className="text-xs" style={{ color: '#7a7570' }}>Tap to choose from gallery · up to 20 files</p>
+              {uploadingMedia ? (
+                <>
+                  <div className="w-8 h-8 border-4 border-[#1a3d2b]/30 border-t-[#1a3d2b] rounded-full animate-spin"></div>
+                  <p className="text-sm font-semibold mt-1" style={{ color: '#5a5550' }}>Uploading media files...</p>
+                </>
+              ) : (
+                <>
+                  <CameraIcon />
+                  <p className="text-sm font-semibold" style={{ color: '#5a5550' }}>Upload photos & videos</p>
+                  <p className="text-xs" style={{ color: '#7a7570' }}>Tap to choose from gallery · up to 20 files</p>
+                </>
+              )}
             </div>
+
+            {mediaFiles.length > 0 && (
+              <div className="grid grid-cols-4 gap-2 mb-4">
+                {mediaFiles.map((m, idx) => (
+                  <div key={idx} className="relative aspect-square rounded-xl overflow-hidden bg-stone-100 border border-stone-200">
+                    {m.type === 'image' ? (
+                      <img src={m.url} alt="Uploaded" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center bg-stone-900 text-white">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        <span style={{ fontSize: 9 }} className="mt-1 font-semibold">Video</span>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setMediaFiles(prev => prev.filter((_, i) => i !== idx))}
+                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center text-xs hover:bg-black/80 transition-colors font-bold"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <p className="text-xs font-semibold mb-2" style={{ color: '#5a5550' }}>Amenities & features</p>
             <div className="flex flex-wrap gap-2 mb-4">
               {tagOptions.map(t => (
@@ -1080,8 +1167,17 @@ function CreateScreen({ onClose, onPublish }: { onClose: () => void; onPublish: 
               ))}
             </div>
 
-            <div className="p-4 rounded-2xl" style={{ background: '#fff', border: '1px solid #e2ddd8' }}>
+            <div className="p-4 rounded-2xl mb-4" style={{ background: '#fff', border: '1px solid #e2ddd8' }}>
               <h3 className="text-sm font-semibold mb-2" style={{ color: '#141414' }}>Preview</h3>
+              {mediaFiles.length > 0 && (
+                <div className="relative aspect-video rounded-xl overflow-hidden mb-3 bg-stone-100">
+                  {mediaFiles[0].type === 'image' ? (
+                    <img src={mediaFiles[0].url} alt="Preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <video src={mediaFiles[0].url} className="w-full h-full object-cover" />
+                  )}
+                </div>
+              )}
               <p className="text-sm font-semibold" style={{ color: '#141414' }}>{form.title || 'Untitled listing'}</p>
               <p className="text-xs" style={{ color: '#7a7570' }}>
                 {form.town ? `${form.town}${form.district ? `, ${form.district}` : ''}` : 'Location'} · ₹{form.rent || '—'}/mo
@@ -1113,6 +1209,7 @@ function CreateScreen({ onClose, onPublish }: { onClose: () => void; onPublish: 
             if (step < 3) {
               setStep(s => s + 1)
             } else {
+              const firstImage = mediaFiles.find(m => m.type === 'image')?.url
               const formattedListing = {
                 title: form.title,
                 area: form.town,
@@ -1122,9 +1219,12 @@ function CreateScreen({ onClose, onPublish }: { onClose: () => void; onPublish: 
                 bathrooms: parseInt(form.bathrooms) || 1,
                 floor: form.floor || 'Ground',
                 tags: form.tags,
-                imageUrl: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&h=400&fit=crop&auto=format',
+                imageUrl: firstImage || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&h=400&fit=crop&auto=format',
                 available: form.available ? `From ${new Date(form.available).toLocaleDateString([], {month: 'short', day: 'numeric'})}` : 'Immediate',
-                description: form.description
+                description: form.description,
+                media: mediaFiles,
+                lat: form.lat,
+                lng: form.lng
               }
               await onPublish(formattedListing)
             }
@@ -1316,7 +1416,7 @@ function ProfileScreen({
     }
   }, [userProfile])
 
-  const myListings = listings.filter(l => l.postedBy === userProfile?.name || l.postedBy === 'Kabir Singh')
+  const myListings = listings.filter(l => l.postedByUid === user?.uid || (userProfile?.name && l.postedBy === userProfile.name) || l.postedBy === 'Kabir Singh')
 
   const handleSaveProfile = async () => {
     setLoading(true)
@@ -2298,6 +2398,14 @@ function mapDatabaseListing(key: string, raw: any): Listing {
     tags: combinedTags,
     lat: exactLocation.lat || raw.lat,
     lng: exactLocation.lng || raw.lng,
+    postedBy: raw.postedBy || 'Anonymous User',
+    postedByAvatar: raw.postedByAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&h=80&fit=crop&auto=format',
+    postedByUid: raw.postedByUid || '',
+    media: Array.isArray(raw.media) ? raw.media : [],
+    imageUrl: raw.imageUrl || (Array.isArray(raw.media) && raw.media.find((m: any) => m.type === 'image')?.url) || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&h=400&fit=crop&auto=format',
+    verified: !!raw.verified,
+    available: raw.available || 'Immediate',
+    description: raw.description || ''
   }
 }
 
@@ -2577,7 +2685,7 @@ export default function App() {
                 }
               }
 
-              const newListing: Listing & { status: string } = {
+              const newListing: Listing & { status: string; postedByUid?: string; media?: any[] } = {
                 id: newListingDoc.id,
                 ...newListingData,
                 status: 'active',
@@ -2586,6 +2694,7 @@ export default function App() {
                 verified: false,
                 postedBy: userProfile?.name || 'Anonymous User',
                 postedByAvatar: userProfile?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&h=80&fit=crop&auto=format',
+                postedByUid: user?.uid,
               }
 
               await setDoc(newListingDoc, newListing)
