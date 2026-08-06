@@ -818,9 +818,10 @@ function MapModal({
     if ((window as any).L) {
       const L = (window as any).L
       const map = L.map(mapRef.current).setView([lat, lng], 15)
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap'
+      L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+        maxZoom: 20,
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+        attribution: 'Map data &copy; Google'
       }).addTo(map)
       L.marker([lat, lng]).addTo(map).bindPopup(`<b>${title}</b><br/>${street || area}`).openPopup()
       return () => map.remove()
@@ -883,9 +884,10 @@ function LocationPickerModal({
       zoomControl: false
     }).setView([lat, lng], 15)
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap'
+    L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+      maxZoom: 20,
+      subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+      attribution: 'Map data &copy; Google'
     }).addTo(map)
 
     L.control.zoom({ position: 'topright' }).addTo(map)
@@ -1574,7 +1576,9 @@ function CreateScreen({ onClose, onPublish, userProfile }: { onClose: () => void
       return form.town.trim().length > 0 && 
              form.district.trim().length > 0 && 
              form.pin.trim().length > 0 && 
-             form.available.trim().length > 0
+             form.available.trim().length > 0 &&
+             form.lat !== null &&
+             form.lng !== null
     }
     return true
   }
@@ -1758,8 +1762,33 @@ function CreateScreen({ onClose, onPublish, userProfile }: { onClose: () => void
               <LocationPickerModal
                 initialLat={form.lat}
                 initialLng={form.lng}
-                onConfirm={(lat, lng) => {
-                  setForm(f => ({ ...f, lat, lng }))
+                onConfirm={async (latVal, lngVal) => {
+                  setForm(f => ({ ...f, lat: latVal, lng: lngVal }))
+
+                  const isManualEmpty = !form.town.trim() || !form.district.trim() || !form.state.trim() || !form.pin.trim()
+                  if (isManualEmpty) {
+                    try {
+                      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latVal}&lon=${lngVal}&addressdetails=1`)
+                      const data = await res.json()
+                      if (data && data.address) {
+                        const addr = data.address
+                        const postcode = addr.postcode || ''
+                        const locality = addr.suburb || addr.neighbourhood || addr.village || addr.locality || ''
+                        const districtVal = addr.city_district || addr.district || addr.county || addr.city || ''
+                        const stateVal = addr.state || ''
+                        
+                        setForm(f => ({
+                          ...f,
+                          town: f.town.trim() ? f.town : locality,
+                          district: f.district.trim() ? f.district : districtVal,
+                          state: f.state.trim() ? f.state : stateVal,
+                          pin: f.pin.trim() ? f.pin : postcode
+                        }))
+                      }
+                    } catch (err) {
+                      console.warn("Reverse geocode failed on confirm:", err)
+                    }
+                  }
                 }}
                 onClose={() => setShowMapModal(false)}
               />
@@ -3522,8 +3551,10 @@ function ExploreScreen({ listings, onListingClick }: { listings: Listing[]; onLi
 
     mapRef.current = map
 
-    L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+    L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
       maxZoom: 20,
+      subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+      attribution: 'Map data &copy; Google'
     }).addTo(map)
 
     const centerIcon = L.divIcon({
