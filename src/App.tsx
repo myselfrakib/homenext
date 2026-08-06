@@ -3745,6 +3745,9 @@ function mapDatabaseListing(key: string, raw: any): Listing {
     ownerName: raw.ownerName || 'Kabir Singh',
     ownerPhone: raw.ownerPhone || '+91 98765 43210',
     street: raw.street || 'Flat 4B, Sunrise Apartments, MG Road',
+    featured: !!raw.featured,
+    status: raw.status || 'active',
+    rejectionReason: raw.rejectionReason || '',
   }
 }
 
