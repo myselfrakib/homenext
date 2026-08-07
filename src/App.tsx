@@ -2753,6 +2753,12 @@ function AuthScreen({
           >
             Continue as Guest
           </button>
+          <a
+            href="https://homenext-five.vercel.app/#/admin"
+            className="text-xs font-bold text-stone-500 hover:text-stone-700 hover:underline cursor-pointer mx-auto mt-1"
+          >
+            Admin Login
+          </a>
           <div className="h-[1px] bg-[#e2ddd8] w-full my-1"></div>
           <p className="text-[10px] text-[#7a7570]">
             By continuing, you agree to Nestly's Terms of Service and Privacy Policy.
