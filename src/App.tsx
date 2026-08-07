@@ -689,12 +689,7 @@ function HomeScreen({ listings, onListingClick }: { listings: Listing[]; onListi
           >
             <FilterIcon />
           </button>
-          <div
-            className="w-10 h-10 rounded-full overflow-hidden bg-stone-200 shrink-0"
-            style={{ border: '2px solid #1a3d2b' }}
-          >
-            <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop&auto=format" alt="You" className="w-full h-full object-cover" />
-          </div>
+
         </div>
       </div>
 
