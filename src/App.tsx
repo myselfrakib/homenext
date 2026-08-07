@@ -1580,10 +1580,20 @@ function CreateScreen({ onClose, onPublish, userProfile, initialData }: { onClos
   const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files || files.length === 0) return
+    const currentCount = mediaFiles.length
+    if (currentCount >= 6) {
+      alert("You can only upload up to 6 files.")
+      return
+    }
+    const filesToUpload = Array.from(files).slice(0, 6 - currentCount)
+    if (files.length > filesToUpload.length) {
+      alert(`Only ${filesToUpload.length} file(s) will be uploaded to stay within the 6 file limit.`)
+    }
+
     setUploadingMedia(true)
     try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i]
+      for (let i = 0; i < filesToUpload.length; i++) {
+        const file = filesToUpload[i]
         const storagePath = `listings/${Date.now()}_${file.name}`
         const fileRef = sRef(storage, storagePath)
         await uploadBytes(fileRef, file)
@@ -1855,46 +1865,67 @@ function CreateScreen({ onClose, onPublish, userProfile, initialData }: { onClos
               ref={mediaInputRef}
               style={{ display: 'none' }}
             />
-            <div
-              onClick={() => mediaInputRef.current?.click()}
-              className="flex flex-col items-center justify-center rounded-2xl mb-4 gap-2 cursor-pointer active:scale-[0.98] transition-transform"
-              style={{ background: '#fff', border: '2px dashed #e2ddd8', minHeight: 160 }}
-            >
-              {uploadingMedia ? (
-                <>
-                  <div className="w-8 h-8 border-4 border-[#1a3d2b]/30 border-t-[#1a3d2b] rounded-full animate-spin"></div>
-                  <p className="text-sm font-semibold mt-1" style={{ color: '#5a5550' }}>Uploading media files...</p>
-                </>
-              ) : (
-                <>
-                  <CameraIcon />
-                  <p className="text-sm font-semibold" style={{ color: '#5a5550' }}>Upload photos & videos</p>
-                  <p className="text-xs" style={{ color: '#7a7570' }}>Tap to choose from gallery · up to 20 files</p>
-                </>
-              )}
-            </div>
-
-            {mediaFiles.length > 0 && (
-              <div className="grid grid-cols-4 gap-2 mb-4">
-                {mediaFiles.map((m, idx) => (
-                  <div key={idx} className="relative aspect-square rounded-xl overflow-hidden bg-stone-100 border border-stone-200">
-                    {m.type === 'image' ? (
-                      <img src={m.url} alt="Uploaded" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center bg-stone-900 text-white">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                        <span style={{ fontSize: 9 }} className="mt-1 font-semibold">Video</span>
-                      </div>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => setMediaFiles(prev => prev.filter((_, i) => i !== idx))}
-                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center text-xs hover:bg-black/80 transition-colors font-bold"
+            {mediaFiles.length === 0 ? (
+              <div
+                onClick={() => mediaInputRef.current?.click()}
+                className="flex flex-col items-center justify-center rounded-2xl mb-4 gap-2 cursor-pointer active:scale-[0.98] transition-transform"
+                style={{ background: '#fff', border: '2px dashed #e2ddd8', minHeight: 160 }}
+              >
+                {uploadingMedia ? (
+                  <>
+                    <div className="w-8 h-8 border-4 border-[#1a3d2b]/30 border-t-[#1a3d2b] rounded-full animate-spin"></div>
+                    <p className="text-sm font-semibold mt-1" style={{ color: '#5a5550' }}>Uploading media files...</p>
+                  </>
+                ) : (
+                  <>
+                    <CameraIcon />
+                    <p className="text-sm font-semibold" style={{ color: '#5a5550' }}>Upload photos & videos</p>
+                    <p className="text-xs" style={{ color: '#7a7570' }}>Tap to choose from gallery · up to 6 files</p>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl p-4 mb-4" style={{ border: '2px dashed #e2ddd8' }}>
+                <div className="flex justify-between items-center mb-3">
+                  <p className="text-sm font-bold text-stone-900">Photos & Videos</p>
+                  <p className="text-xs font-semibold text-stone-500">{mediaFiles.length}/6 uploaded</p>
+                </div>
+                <div className="grid grid-cols-4 gap-2">
+                  {mediaFiles.map((m, idx) => (
+                    <div key={idx} className="relative aspect-square rounded-xl overflow-hidden bg-stone-100 border border-stone-200">
+                      {m.type === 'image' ? (
+                        <img src={m.url} alt="Uploaded" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center bg-stone-900 text-white">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                          <span style={{ fontSize: 9 }} className="mt-1 font-semibold">Video</span>
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setMediaFiles(prev => prev.filter((_, i) => i !== idx)); }}
+                        className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center text-xs hover:bg-black/80 transition-colors font-bold z-10"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  {mediaFiles.length < 6 && (
+                    <div
+                      onClick={() => mediaInputRef.current?.click()}
+                      className="relative aspect-square rounded-xl flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-transform"
+                      style={{ background: '#f7f5f1', border: '2px dashed #e2ddd8' }}
                     >
-                      ×
-                    </button>
-                  </div>
-                ))}
+                      {uploadingMedia ? (
+                        <div className="w-5 h-5 border-2 border-[#1a3d2b]/30 border-t-[#1a3d2b] rounded-full animate-spin"></div>
+                      ) : (
+                        <svg className="w-6 h-6 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -2156,7 +2187,9 @@ function ProfileScreen({
   onListingClick,
   onCreateClick,
   onDeleteListing,
-  onToggleListingStatus
+  onToggleListingStatus,
+  onScreenNav,
+  onEditListing
 }: { 
   user: any; 
   userProfile: any; 
