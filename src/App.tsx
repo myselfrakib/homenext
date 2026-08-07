@@ -25,7 +25,7 @@ const getOrCreateGuestUser = () => {
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type Screen = 'home' | 'explore' | 'create' | 'chat' | 'chat-detail' | 'profile' | 'listing-detail' | 'auth' | 'admin-auth' | 'admin-dashboard'
+type Screen = 'home' | 'explore' | 'create' | 'chat' | 'chat-detail' | 'profile' | 'listing-detail' | 'auth' | 'admin-auth' | 'admin-dashboard' | 'terms' | 'privacy' | 'refund'
 
 interface Listing {
   id: string
@@ -1412,29 +1412,60 @@ function FormField({ label, children }: { label: string; children: React.ReactNo
   )
 }
 
-function CreateScreen({ onClose, onPublish, userProfile }: { onClose: () => void; onPublish: (data: any) => Promise<void>; userProfile?: any }) {
+function CreateScreen({ onClose, onPublish, userProfile, initialData }: { onClose: () => void; onPublish: (data: any) => Promise<void>; userProfile?: any; initialData?: Listing }) {
   const [step, setStep] = useState(1)
   const [publishing, setPublishing] = useState(false)
-  const [form, setForm] = useState({
-    title: '',
-    street: '',
-    town: '',
-    district: '',
-    state: '',
-    pin: '',
-    rent: '',
-    deposit: '',
-    bedrooms: '1',
-    bathrooms: '1',
-    floor: 'Ground',
-    description: '',
-    furnished: 'Unfurnished',
-    available: '',
-    tags: [] as string[],
-    lat: null as number | null,
-    lng: null as number | null,
-    ownerName: '',
-    ownerPhone: '+91 ',
+  const [form, setForm] = useState(() => {
+    if (initialData) {
+      return {
+        title: initialData.title || '',
+        street: initialData.street || '',
+        town: initialData.area || '',
+        district: initialData.town || '',
+        state: '',
+        pin: '',
+        rent: initialData.rent ? String(initialData.rent) : '',
+        deposit: '',
+        bedrooms: initialData.bedrooms ? String(initialData.bedrooms) : '1',
+        bathrooms: initialData.bathrooms ? String(initialData.bathrooms) : '1',
+        floor: initialData.floor || 'Ground',
+        description: initialData.description || '',
+        furnished: 'Unfurnished',
+        available: '',
+        tags: initialData.tags || [],
+        lat: initialData.lat || null,
+        lng: initialData.lng || null,
+        ownerName: initialData.ownerName || '',
+        ownerPhone: initialData.ownerPhone || '+91 ',
+      }
+    }
+    return {
+      title: '',
+      street: '',
+      town: '',
+      district: '',
+      state: '',
+      pin: '',
+      rent: '',
+      deposit: '',
+      bedrooms: '1',
+      bathrooms: '1',
+      floor: 'Ground',
+      description: '',
+      furnished: 'Unfurnished',
+      available: (() => {
+        const d = new Date()
+        d.setMonth(d.getMonth() + 1)
+        const yyyy = d.getFullYear()
+        const mm = String(d.getMonth() + 1).padStart(2, '0')
+        return `${yyyy}-${mm}-01`
+      })(),
+      tags: [] as string[],
+      lat: null as number | null,
+      lng: null as number | null,
+      ownerName: '',
+      ownerPhone: '+91 ',
+    }
   })
 
   const [fetchingLocation, setFetchingLocation] = useState(false)
@@ -1530,7 +1561,19 @@ function CreateScreen({ onClose, onPublish, userProfile }: { onClose: () => void
     )
   }
 
-  const [mediaFiles, setMediaFiles] = useState<{ url: string; type: 'image' | 'video' }[]>([])
+  const [mediaFiles, setMediaFiles] = useState<{ url: string; type: 'image' | 'video' }[]>(() => {
+    if (initialData) {
+      const files: { url: string; type: 'image' | 'video' }[] = []
+      if (initialData.imageUrl) files.push({ url: initialData.imageUrl, type: 'image' })
+      if (initialData.media && Array.isArray(initialData.media)) {
+        initialData.media.forEach(m => {
+          if (m.url !== initialData.imageUrl) files.push({ url: m.url, type: m.type })
+        })
+      }
+      return files
+    }
+    return []
+  })
   const [uploadingMedia, setUploadingMedia] = useState(false)
   const mediaInputRef = useRef<HTMLInputElement>(null)
 
@@ -1557,7 +1600,7 @@ function CreateScreen({ onClose, onPublish, userProfile }: { onClose: () => void
     }
   }
 
-  const tagOptions = ['Parking', 'Pet Friendly', 'Couple Friendly', 'WiFi Ready', 'Power Backup', 'Gated', 'CCTV', 'Water 24/7', 'Gym', 'Lift']
+  const tagOptions = ['Bike parking', 'Car Parking', 'Pet Friendly', 'Couple Friendly', 'WiFi Ready', 'Power Backup', 'Gated', 'CCTV', 'Water 24/7', 'Gym', 'Lift']
 
   const toggleTag = (t: string) => {
     setForm(f => ({
@@ -1593,7 +1636,7 @@ function CreateScreen({ onClose, onPublish, userProfile }: { onClose: () => void
       <div className="flex items-center justify-between px-4 pt-12 pb-4">
         <div>
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, color: '#141414' }}>
-            {step === 1 ? 'List your space' : step === 2 ? 'Location & Details' : 'Photos & Amenities'}
+            {step === 1 ? (initialData ? 'Edit your space' : 'List your space') : step === 2 ? 'Location & Details' : 'Photos & Amenities'}
           </h2>
           <p className="text-xs" style={{ color: '#7a7570' }}>Step {step} of 3</p>
         </div>
@@ -2126,6 +2169,8 @@ function ProfileScreen({
   onCreateClick?: () => void;
   onDeleteListing?: (id: string) => Promise<void>;
   onToggleListingStatus?: (id: string, currentStatus: string) => Promise<void>;
+  onScreenNav?: (screen: Screen) => void;
+  onEditListing?: (l: Listing) => void;
 }) {
   const [notifications, setNotifications] = useState(true)
   const [isEditMode, setIsEditMode] = useState(false)
@@ -2419,6 +2464,14 @@ function ProfileScreen({
                           {isPaused ? '▶️ Publish' : '⏸ Pause'}
                         </button>
                       )}
+                      {onEditListing && (
+                        <button
+                          onClick={() => onEditListing(l)}
+                          className="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 text-xs font-semibold hover:bg-blue-100 active:scale-98 transition-transform"
+                        >
+                          ✏️ Edit
+                        </button>
+                      )}
                       {onDeleteListing && (
                         <button
                           onClick={() => handleDelete(l.id, l.title)}
@@ -2445,9 +2498,13 @@ function ProfileScreen({
               { label: 'Account details' },
               { label: 'Privacy & safety' },
               { label: 'Help & support' },
+              { label: 'Terms & Conditions', action: () => onScreenNav?.('terms') },
+              { label: 'Privacy Policy', action: () => onScreenNav?.('privacy') },
+              { label: 'Refund Policy', action: () => onScreenNav?.('refund') },
             ].map((item, i) => (
               <div
                 key={item.label}
+                onClick={item.action}
                 className="flex items-center justify-between px-4 py-3 cursor-pointer active:bg-stone-50"
                 style={i > 0 ? { borderTop: '1px solid #e2ddd8' } : {}}
               >
@@ -2488,14 +2545,12 @@ function AuthScreen({
   onSignIn,
   onSignUp,
   onGuest,
-  onClose,
-  onAdminClick
+  onClose
 }: {
   onSignIn: (email: string, pass: string) => Promise<void>
   onSignUp: (email: string, pass: string, name: string, phone: string) => Promise<void>
   onGuest: () => void
   onClose?: () => void
-  onAdminClick?: () => void
 }) {
   const [isLogin, setIsLogin] = useState(true)
   const [email, setEmail] = useState('')
@@ -2665,15 +2720,6 @@ function AuthScreen({
           >
             Continue as Guest
           </button>
-          {onAdminClick && (
-            <button
-              type="button"
-              onClick={onAdminClick}
-              className="text-[11px] font-bold text-stone-500 hover:text-stone-850 transition-colors mx-auto cursor-pointer"
-            >
-              🛡️ Admin Access
-            </button>
-          )}
           <div className="h-[1px] bg-[#e2ddd8] w-full my-1"></div>
           <p className="text-[10px] text-[#7a7570]">
             By continuing, you agree to Nestly's Terms of Service and Privacy Policy.
@@ -4081,10 +4127,76 @@ function mapDatabaseListing(key: string, raw: any): Listing {
   }
 }
 
+function LegalScreen({ type, onBack }: { type: 'terms' | 'privacy' | 'refund', onBack: () => void }) {
+  const content = {
+    terms: {
+      title: 'Terms & Conditions',
+      date: 'Effective: August 1, 2026',
+      sections: [
+        { h: '1. Acceptance of Terms', p: 'By accessing or using Nestly, you agree to be bound by these Terms. If you disagree, do not use the service.' },
+        { h: '2. User Responsibilities', p: 'You are responsible for maintaining the confidentiality of your account and for all activities that occur under your account.' },
+        { h: '3. Listings & Accuracy', p: 'All listings must be accurate and truthful. Nestly reserves the right to remove any listing deemed inappropriate or misleading.' },
+        { h: '4. Liability', p: 'Nestly acts solely as a platform to connect renters and listers. We are not liable for any disputes arising between users.' }
+      ]
+    },
+    privacy: {
+      title: 'Privacy Policy',
+      date: 'Effective: August 1, 2026',
+      sections: [
+        { h: '1. Information We Collect', p: 'We collect information you provide directly, such as your name, email, and phone number, as well as data about your interactions with the app.' },
+        { h: '2. How We Use Data', p: 'Your data is used to provide, maintain, and improve our services, and to communicate with you regarding your account and listings.' },
+        { h: '3. Data Sharing', p: 'We do not sell your personal data. We may share data with trusted third-party service providers who assist us in operating our app.' },
+        { h: '4. Security', p: 'We implement industry-standard security measures to protect your personal information from unauthorized access.' }
+      ]
+    },
+    refund: {
+      title: 'Refund Policy',
+      date: 'Effective: August 1, 2026',
+      sections: [
+        { h: '1. Premium Listing Fees', p: 'Fees paid for premium listing placements or verifications are generally non-refundable once the service has been rendered.' },
+        { h: '2. Accidental Charges', p: 'If you believe you were charged in error, please contact our support team within 7 days of the charge for a full refund.' },
+        { h: '3. Cancellation', p: 'You may cancel your premium services at any time, but no prorated refunds will be provided for unused time.' },
+        { h: '4. Changes to Policy', p: 'Nestly reserves the right to modify this refund policy at any time. Continued use implies acceptance.' }
+      ]
+    }
+  }[type]
+
+  return (
+    <div className="flex flex-col h-full bg-[#f7f5f1]">
+      <div className="sticky top-0 z-20 px-4 pt-12 pb-4 bg-[#f7f5f1]/90 backdrop-blur-md border-b border-[#e2ddd8] flex items-center justify-between">
+        <button onClick={onBack} className="p-2 -ml-2 text-[#1a3d2b] active:bg-stone-200 rounded-full transition-colors">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" /></svg>
+        </button>
+        <h2 className="text-base font-bold text-[#141414]">{content.title}</h2>
+        <div className="w-9"></div>
+      </div>
+      <div className="px-5 py-6 overflow-y-auto pb-24">
+        <p className="text-xs font-semibold text-[#7a7570] uppercase tracking-wider mb-6">{content.date}</p>
+        <div className="space-y-6">
+          {content.sections.map((sec, i) => (
+            <div key={i} className="bg-white p-4 rounded-2xl border border-[#e2ddd8] shadow-sm">
+              <h3 className="text-sm font-bold text-[#1a3d2b] mb-2">{sec.h}</h3>
+              <p className="text-xs text-[#5a5550] leading-relaxed">{sec.p}</p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-8 text-center">
+          <p className="text-[11px] text-[#7a7570]">If you have any questions, please contact</p>
+          <p className="text-[11px] font-bold text-[#1a3d2b] mt-0.5">support@nestly.com</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function App() {
+  const [isAdminRoute, setIsAdminRoute] = useState(() => window.location.hash.startsWith('#/admin'))
   const [onboarded, setOnboarded] = useState(() => localStorage.getItem('nestly_onboarded') === 'true')
+  const [editListingData, setEditListingData] = useState<Listing | null>(null)
   const [screen, setScreen] = useState<Screen>(() => {
+    if (window.location.hash.startsWith('#/admin')) return 'admin-auth'
     const saved = sessionStorage.getItem('nestly_current_screen')
+    if (saved === 'admin-auth' || saved === 'admin-dashboard') return 'home'
     return (saved as Screen) || 'home'
   })
   const [navTab, setNavTab] = useState<'home' | 'explore' | 'chat' | 'profile'>(() => {
@@ -4095,6 +4207,20 @@ export default function App() {
   useEffect(() => {
     sessionStorage.setItem('nestly_current_screen', screen)
   }, [screen])
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const adminPath = window.location.hash.startsWith('#/admin')
+      setIsAdminRoute(adminPath)
+      if (adminPath) {
+        setScreen(prev => prev === 'admin-dashboard' ? 'admin-dashboard' : 'admin-auth')
+      } else {
+        setScreen(prev => (prev === 'admin-auth' || prev === 'admin-dashboard') ? 'home' : prev)
+      }
+    }
+    window.addEventListener('hashchange', handleHashChange)
+    return () => window.removeEventListener('hashchange', handleHashChange)
+  }, [])
 
   useEffect(() => {
     sessionStorage.setItem('nestly_current_nav_tab', navTab)
@@ -4236,35 +4362,15 @@ export default function App() {
           })
         }
       } else {
-        const savedUid = sessionStorage.getItem('nestly_user_uid')
-        const authType = sessionStorage.getItem('nestly_auth_type')
-        if (savedUid && authType === 'real') {
-          const simulatedUser = {
-            uid: savedUid,
-            isAnonymous: false,
-            displayName: 'Logged In User',
-            email: ''
-          }
-          setUser(simulatedUser)
-          const profileDocRef = doc(firestore, 'profiles', savedUid)
-          onSnapshot(profileDocRef, (snapshot) => {
-            if (snapshot.exists()) {
-              setUserProfile(snapshot.data())
-            }
-          }, (error) => {
-            console.warn("Simulated user profile snapshot listener error:", error)
-          })
-        } else {
-          const guestUser = getOrCreateGuestUser()
-          setUser(guestUser)
-          setUserProfile({
-            name: 'Guest User',
-            avatar: '',
-            phone: 'None',
-            email: 'guest@nestly.com',
-            joined: 'Just now'
-          })
-        }
+        const guestUser = getOrCreateGuestUser()
+        setUser(guestUser)
+        setUserProfile({
+          name: 'Guest User',
+          avatar: '',
+          phone: 'None',
+          email: 'guest@nestly.com',
+          joined: 'Just now'
+        })
       }
     })
     return () => unsubscribe()
@@ -4435,7 +4541,7 @@ export default function App() {
     setScreen('auth')
   }
 
-  if (!onboarded) return <OnboardingScreen onDone={handleOnboardingDone} />
+  if (!onboarded && !isAdminRoute) return <OnboardingScreen onDone={handleOnboardingDone} />
 
   const showNav = ['home', 'explore', 'chat', 'profile'].includes(screen)
 
@@ -4536,8 +4642,31 @@ export default function App() {
         {screen === 'create' && (
           <CreateScreen 
             userProfile={userProfile}
-            onClose={() => { setScreen('home'); setNavTab('home') }} 
+            initialData={editListingData || undefined}
+            onClose={() => { 
+              setEditListingData(null)
+              setScreen('home')
+              setNavTab('home') 
+            }} 
             onPublish={async (newListingData) => {
+              if (editListingData) {
+                // Update existing listing
+                let coords = [editListingData.lat, editListingData.lng]
+                if (newListingData.lat !== undefined && newListingData.lng !== undefined && newListingData.lat !== null && newListingData.lng !== null) {
+                  coords = [newListingData.lat, newListingData.lng]
+                }
+                const updatedListing = {
+                  ...newListingData,
+                  lat: coords[0],
+                  lng: coords[1],
+                }
+                await updateDoc(doc(firestore, 'listings', editListingData.id), updatedListing)
+                setEditListingData(null)
+                setScreen('home')
+                setNavTab('home')
+                return
+              }
+
               const listingsCol = collection(firestore, 'listings')
               const newListingDoc = doc(listingsCol)
               
@@ -4608,7 +4737,14 @@ export default function App() {
             onSignOut={handleSignOut}
             onAuthTrigger={() => setScreen('auth')}
             onListingClick={handleListingClick}
-            onCreateClick={() => setScreen('create')}
+            onCreateClick={() => {
+              setEditListingData(null)
+              setScreen('create')
+            }}
+            onEditListing={(l) => {
+              setEditListingData(l)
+              setScreen('create')
+            }}
             onDeleteListing={async (id) => {
               await deleteDoc(doc(firestore, 'listings', id))
             }}
@@ -4616,13 +4752,17 @@ export default function App() {
               const nextStatus = currentStatus === 'paused' ? 'active' : 'paused'
               await updateDoc(doc(firestore, 'listings', id), { status: nextStatus })
             }}
+            onScreenNav={setScreen}
           />
+        )}
+        {['terms', 'privacy', 'refund'].includes(screen) && (
+          <LegalScreen type={screen as any} onBack={() => setScreen('profile')} />
         )}
         {screen === 'listing-detail' && (
           selectedListing ? (
             <ListingDetailScreen
               listing={selectedListing}
-              isUnlocked={Boolean(user?.uid && selectedListing.postedByUid && selectedListing.postedByUid === user.uid) || !!unlockedListings[selectedListing.id]}
+              isUnlocked={isAdmin || Boolean(user?.uid && selectedListing.postedByUid && selectedListing.postedByUid === user.uid) || !!unlockedListings[selectedListing.id]}
               onUnlock={handleUnlockListing}
               user={user}
               userProfile={userProfile}
@@ -4694,7 +4834,6 @@ export default function App() {
               setNavTab('home')
             }}
             onClose={user ? () => { setScreen('home'); setNavTab('home') } : undefined}
-            onAdminClick={() => setScreen('admin-auth')}
           />
         )}
         {screen === 'admin-auth' && (
