@@ -25,7 +25,81 @@ const getOrCreateGuestUser = () => {
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type Screen = 'home' | 'explore' | 'create' | 'chat' | 'chat-detail' | 'profile' | 'listing-detail' | 'auth' | 'admin-auth' | 'admin-dashboard' | 'terms' | 'privacy' | 'refund'
+type Screen = 'home' | 'explore' | 'create' | 'chat' | 'chat-detail' | 'profile' | 'listing-detail' | 'auth' | 'admin-auth' | 'admin-dashboard' | 'terms' | 'privacy' | 'refund' | 'pass' | 'premium'
+
+interface PassPlan {
+  id: string
+  name: string
+  price: number
+  views: number
+  tokens: number
+  pricePerView: number
+  badge?: string
+  popular?: boolean
+  description: string
+  features?: string[]
+}
+
+const PASS_PLANS: PassPlan[] = [
+  {
+    id: 'pass_499',
+    name: 'Starter Plan',
+    price: 499,
+    views: 6,
+    tokens: 6,
+    pricePerView: 83,
+    badge: 'Starter',
+    description: 'Get 6 tokens to view lister details, contact & schedule flat visits',
+    features: [
+      '6 Flat Unlock Tokens',
+      'Direct Lister Mobile & Full Address',
+      'Contact & Arrange Flat Visits',
+      '₹2,000 Standard Brokerage payable post-visit'
+    ]
+  },
+  {
+    id: 'pass_599',
+    name: 'Popular Plan',
+    price: 599,
+    views: 7,
+    tokens: 7,
+    pricePerView: 85,
+    badge: 'Most Popular',
+    popular: true,
+    description: 'Get 7 tokens to view lister details, contact & schedule flat visits',
+    features: [
+      '7 Flat Unlock Tokens',
+      'Direct Lister Mobile & Full Address',
+      'Contact & Arrange Flat Visits',
+      '₹2,000 Standard Brokerage payable post-visit'
+    ]
+  },
+  {
+    id: 'pass_699',
+    name: 'Value Plan',
+    price: 699,
+    views: 10,
+    tokens: 10,
+    pricePerView: 70,
+    badge: 'Best Value',
+    description: 'Get 10 tokens to view lister details, contact & schedule flat visits',
+    features: [
+      '10 Flat Unlock Tokens (Maximum Savings)',
+      'Direct Lister Mobile & Full Address',
+      'Contact & Arrange Flat Visits',
+      '₹2,000 Standard Brokerage payable post-visit'
+    ]
+  }
+]
+
+const POST_VISIT_BROKERAGE_FEE = 2000
+
+const BROKER_SERVICE = {
+  id: 'broker_2000',
+  name: 'Post-Visit Flat Brokerage',
+  price: 2000,
+  description: 'Standard flat brokerage fee of ₹2,000 charged and payable through the app after your physical flat visit'
+}
 
 interface Listing {
   id: string
@@ -614,7 +688,17 @@ function ListingCard({ listing, onClick }: { listing: Listing; onClick: () => vo
 
 // ─── Screens ──────────────────────────────────────────────────────────────────
 
-function HomeScreen({ listings, onListingClick }: { listings: Listing[]; onListingClick: (l: Listing) => void }) {
+function HomeScreen({ 
+  listings, 
+  onListingClick,
+  passVouchers = 0,
+  onGoToPass
+}: { 
+  listings: Listing[]; 
+  onListingClick: (l: Listing) => void;
+  passVouchers?: number;
+  onGoToPass?: () => void;
+}) {
   const [search, setSearch] = useState('')
   const [activeFilter, setActiveFilter] = useState<'All' | 'Studio' | '1BHK' | '2BHK' | '3BHK+'>('All')
 
@@ -689,6 +773,15 @@ function HomeScreen({ listings, onListingClick }: { listings: Listing[]; onListi
           >
             <FilterIcon />
           </button>
+          {onGoToPass && (
+            <button
+              onClick={onGoToPass}
+              className="h-10 px-3 rounded-xl flex items-center gap-1.5 shrink-0 bg-emerald-900 text-white text-xs font-bold shadow-xs active:scale-95 transition-transform"
+            >
+              <span>🪙</span>
+              <span>{passVouchers > 0 ? `${passVouchers} Tokens` : 'Premium'}</span>
+            </button>
+          )}
 
         </div>
       </div>
@@ -697,7 +790,7 @@ function HomeScreen({ listings, onListingClick }: { listings: Listing[]; onListi
       <div className="flex-1 overflow-y-auto">
 
         {/* ── Stats strip ── */}
-        <div className="flex items-center gap-4 px-4 mb-5">
+        <div className="flex items-center gap-4 px-4 mb-4">
           {[
             { val: listings.length.toString(), label: 'Spaces' },
             { val: '3', label: 'New today' },
@@ -717,6 +810,38 @@ function HomeScreen({ listings, onListingClick }: { listings: Listing[]; onListi
             )}
           </div>
         </div>
+
+        {/* ── Pass Teaser Banner ── */}
+        {onGoToPass && (
+          <div className="px-4 mb-5">
+            <div
+              onClick={onGoToPass}
+              className="p-3.5 rounded-2xl bg-gradient-to-r from-[#1a3d2b] to-[#25523b] text-white flex items-center justify-between shadow-sm cursor-pointer active:scale-98 transition-transform"
+            >
+              <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center text-xl shrink-0">
+                  🪙
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <p className="text-xs font-bold truncate">
+                      {passVouchers > 0 ? `Nestly Premium: ${passVouchers} Tokens Left` : 'Get Flat Tokens · ₹499, ₹599, ₹699'}
+                    </p>
+                    <span className="text-[9px] bg-amber-400 text-stone-950 font-black px-1.5 py-0.2 rounded-full uppercase shrink-0">
+                      ₹2,000 Brokerage Post-Visit
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-emerald-200 mt-0.5 truncate">
+                    {passVouchers > 0 ? 'Tap to view wallet or pay post-visit brokerage' : 'Unlock lister phone, contact & schedule visits'}
+                  </p>
+                </div>
+              </div>
+              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-white/20 text-white shrink-0">
+                {passVouchers > 0 ? 'Wallet ›' : 'Plans ›'}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* ── Featured Carousel ── */}
         {showFeatured && (
@@ -994,15 +1119,33 @@ function LocationPickerModal({
 function RazorpayCheckoutModal({
   listing,
   feeAmount,
+  title,
+  subtitle,
+  amount,
+  benefits,
   onSuccess,
   onClose
 }: {
-  listing: Listing
-  feeAmount: number
+  listing?: Listing
+  feeAmount?: number
+  title?: string
+  subtitle?: string
+  amount?: number
+  benefits?: string[]
   onSuccess: () => void
   onClose: () => void
 }) {
   const [loading, setLoading] = useState(false)
+  const payAmount = amount ?? feeAmount ?? 499
+  const payTitle = title ?? listing?.title ?? 'Nestly Pass Plan'
+  const paySubtitle = subtitle ?? 'Nestly Property Platform'
+
+  const defaultBenefits = [
+    'Full Lister Name & Direct Mobile Number',
+    'Exact Street Address & Interactive Map',
+    'Direct Chat & Calling Access with Lister',
+    'Arrange Flat Visit (₹2,000 Brokerage payable post-visit)'
+  ]
 
   const handlePay = () => {
     setLoading(true)
@@ -1020,7 +1163,7 @@ function RazorpayCheckoutModal({
             <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-xs">R</div>
             <div>
               <p className="font-bold text-sm leading-none">Razorpay Secure</p>
-              <p className="text-[10px] text-blue-200 mt-0.5">Nestly Property Access Fee</p>
+              <p className="text-[10px] text-blue-200 mt-0.5">{paySubtitle}</p>
             </div>
           </div>
           <button onClick={onClose} className="text-stone-400 hover:text-white font-bold text-lg">×</button>
@@ -1028,27 +1171,21 @@ function RazorpayCheckoutModal({
 
         <div className="p-5">
           <div className="bg-stone-50 border border-stone-200 rounded-2xl p-3.5 mb-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs text-stone-500 font-medium">5% Rent Security Deposit</p>
-              <p className="text-sm font-bold text-stone-900 truncate max-w-[200px]">{listing.title}</p>
+            <div className="min-w-0 pr-2">
+              <p className="text-xs text-stone-500 font-medium truncate">{paySubtitle}</p>
+              <p className="text-sm font-bold text-stone-900 truncate">{payTitle}</p>
             </div>
-            <p className="font-mono text-lg font-bold text-[#1a3d2b]">₹{feeAmount.toLocaleString()}</p>
+            <p className="font-mono text-lg font-bold text-[#1a3d2b] shrink-0">₹{payAmount.toLocaleString()}</p>
           </div>
 
           <div className="space-y-2 mb-5">
             <p className="text-xs font-semibold text-stone-700">What you get after payment:</p>
-            <div className="flex items-center gap-2 text-xs text-stone-600">
-              <span className="text-emerald-600 font-bold">✓</span> Full Owner Name & Direct Mobile Number
-            </div>
-            <div className="flex items-center gap-2 text-xs text-stone-600">
-              <span className="text-emerald-600 font-bold">✓</span> Poster Contact Details
-            </div>
-            <div className="flex items-center gap-2 text-xs text-stone-600">
-              <span className="text-emerald-600 font-bold">✓</span> Exact Street Address & Interactive Map
-            </div>
-            <div className="flex items-center gap-2 text-xs text-stone-600">
-              <span className="text-emerald-600 font-bold">✓</span> Direct Chat with Lister
-            </div>
+            {(benefits || defaultBenefits).map((b, i) => (
+              <div key={i} className="flex items-center gap-2 text-xs text-stone-600">
+                <span className="text-emerald-600 font-bold shrink-0">✓</span>
+                <span>{b}</span>
+              </div>
+            ))}
           </div>
 
           <button
@@ -1063,7 +1200,7 @@ function RazorpayCheckoutModal({
               </>
             ) : (
               <>
-                <span>Pay ₹{feeAmount.toLocaleString()} via Razorpay</span>
+                <span>Pay ₹{payAmount.toLocaleString()} via Razorpay</span>
               </>
             )}
           </button>
@@ -1083,6 +1220,15 @@ function ListingDetailScreen({
   onChat,
   isUnlocked,
   onUnlock,
+  passVouchers,
+  hasBrokerService,
+  visited = false,
+  brokeragePaid = false,
+  onMarkVisited,
+  onPayBrokerage,
+  onGoToPass,
+  onUseVoucher,
+  onBookBroker,
   user,
   userProfile
 }: {
@@ -1091,16 +1237,36 @@ function ListingDetailScreen({
   onChat: () => void
   isUnlocked: boolean
   onUnlock: (id: string) => void
+  passVouchers: number
+  hasBrokerService: boolean
+  visited?: boolean
+  brokeragePaid?: boolean
+  onMarkVisited?: (id: string) => void
+  onPayBrokerage?: (id: string) => Promise<void>
+  onGoToPass: () => void
+  onUseVoucher: (id: string) => Promise<boolean | void>
+  onBookBroker: () => Promise<void>
   user?: any
   userProfile?: any
 }) {
   const galleryRef = useRef<HTMLDivElement>(null)
   const [galleryIdx, setGalleryIdx] = useState(0)
   const [showMapModal, setShowMapModal] = useState(false)
-  const [showRazorpay, setShowRazorpay] = useState(false)
+  const [showVoucherConfirmModal, setShowVoucherConfirmModal] = useState(false)
+  const [showBrokerModal, setShowBrokerModal] = useState(false)
+  const [isDeductingVoucher, setIsDeductingVoucher] = useState(false)
+  const [voucherToastMsg, setVoucherToastMsg] = useState('')
+  const [visitedState, setVisitedState] = useState(visited)
+  const [brokeragePaidState, setBrokeragePaidState] = useState(brokeragePaid)
   const mediaCount = listing.media?.length || 0
 
-  const unlockFee = Math.round(listing.rent * 0.05)
+  useEffect(() => {
+    setVisitedState(visited)
+  }, [visited])
+
+  useEffect(() => {
+    setBrokeragePaidState(brokeragePaid)
+  }, [brokeragePaid])
 
   useEffect(() => {
     if (mediaCount <= 1) return
@@ -1139,16 +1305,23 @@ function ListingDetailScreen({
   const [unlockedState, setUnlockedState] = useState(false)
   const unlocked = isUnlocked || isOwner || unlockedState
 
-  const handleTriggerPay = () => {
-    setShowRazorpay(true)
+  const handleViewListerDetails = () => {
+    if (unlocked) return
+    if (!passVouchers || passVouchers <= 0) {
+      onGoToPass()
+    } else {
+      setShowVoucherConfirmModal(true)
+    }
   }
 
   return (
     <div className="flex flex-col h-full bg-white relative">
-      {unlockedState && (
-        <div className="bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 flex items-center justify-between shadow-md animate-in slide-in-from-top z-20">
-          <span>🎉 Payment Successful! All owner details & exact map location unlocked.</span>
-          <button onClick={() => setUnlockedState(false)} className="text-white font-bold ml-2 text-sm">✕</button>
+      {voucherToastMsg && (
+        <div className="bg-emerald-800 text-white text-xs font-bold px-4 py-3 flex items-center justify-between shadow-lg animate-in slide-in-from-top z-30">
+          <div className="flex items-center gap-2">
+            <span>{voucherToastMsg}</span>
+          </div>
+          <button onClick={() => setVoucherToastMsg('')} className="text-white font-bold ml-2">✕</button>
         </div>
       )}
 
@@ -1219,12 +1392,12 @@ function ListingDetailScreen({
                 {unlocked ? (
                   <p className="text-xs text-stone-700 mt-0.5 font-medium">📍 {listing.street || 'Exact street address unlocked'}</p>
                 ) : (
-                  <div className="relative mt-1">
+                  <div className="relative mt-1 cursor-pointer" onClick={handleViewListerDetails}>
                     <p className="text-xs text-stone-400 select-none blur-[5px] pointer-events-none">
                       Flat 4B, Sunrise Apartments, Main Street Road
                     </p>
-                    <span className="absolute inset-0 flex items-center text-[11px] font-bold text-rose-700">
-                      🔒 Exact street address hidden · Pay 5% to unlock
+                    <span className="absolute inset-0 flex items-center text-[11px] font-bold text-amber-900">
+                      🔒 Exact street address hidden · Unlock with Token
                     </span>
                   </div>
                 )}
@@ -1240,10 +1413,10 @@ function ListingDetailScreen({
               </button>
             ) : (
               <button
-                onClick={handleTriggerPay}
-                className="mt-2 w-full py-2.5 rounded-xl bg-rose-100 text-rose-800 text-xs font-bold flex items-center justify-center gap-1.5 border border-rose-200 active:scale-98 transition-transform"
+                onClick={handleViewListerDetails}
+                className="mt-2 w-full py-2.5 rounded-xl bg-emerald-50 text-emerald-900 text-xs font-bold flex items-center justify-center gap-1.5 border border-emerald-200 active:scale-98 transition-transform"
               >
-                🔒 Map Location Locked · Tap to Pay ₹{unlockFee.toLocaleString()}
+                🔒 Map Location Locked · View Lister Details
               </button>
             )}
           </div>
@@ -1280,37 +1453,42 @@ function ListingDetailScreen({
           <div className="p-3.5 rounded-2xl mb-4 bg-stone-50 border border-stone-200">
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-xs font-bold text-stone-700 flex items-center gap-1">
-                👤 Property Owner Details
+                👤 Property Lister Details
               </span>
-              {!unlocked && (
-                <span className="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">
+              {unlocked ? (
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                  ✨ Unlocked with Token
+                </span>
+              ) : (
+                <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
                   Locked
                 </span>
               )}
             </div>
             {unlocked ? (
               <div className="space-y-1.5 text-xs">
-                <p className="text-stone-900 font-semibold">Name: <span className="font-normal text-stone-800">{listing.ownerName || 'Kabir Singh'}</span></p>
+                <p className="text-stone-900 font-semibold">Name: <span className="font-normal text-stone-800">{listing.ownerName || listing.postedBy || 'Kabir Singh'}</span></p>
                 <div className="text-stone-900 font-semibold flex items-center justify-between">
-                  <span>Mobile: <span className="font-normal text-stone-800">{listing.ownerPhone || '+91 98765 43210'}</span></span>
-                  <a href={`tel:${listing.ownerPhone || '+919876543210'}`} className="px-3 py-1 rounded-lg bg-emerald-700 text-white font-bold text-[11px] shadow-sm">Call Owner</a>
+                  <span>Mobile: <span className="font-normal text-stone-800">{listing.ownerPhone || listing.postedByPhone || '+91 98765 43210'}</span></span>
+                  <a href={`tel:${listing.ownerPhone || listing.postedByPhone || '+919876543210'}`} className="px-3 py-1 rounded-lg bg-emerald-700 text-white font-bold text-[11px] shadow-sm">Call Lister</a>
                 </div>
               </div>
             ) : (
-              <div className="relative py-1">
+              <div className="relative py-1 cursor-pointer" onClick={handleViewListerDetails}>
                 <div className="space-y-1 text-xs blur-[5px] select-none pointer-events-none opacity-60">
                   <p className="text-stone-900 font-semibold">Name: Kabir Singh</p>
                   <p className="text-stone-900 font-semibold">Mobile: +91 98765 43210</p>
                 </div>
                 <div className="absolute inset-0 flex items-center justify-between">
-                  <span className="text-xs font-bold text-stone-800">🔒 Pay 5% to reveal owner name & phone</span>
+                  <span className="text-xs font-bold text-stone-800">🔒 Tap to view lister details with 1 Token</span>
+                  <span className="text-[11px] font-bold text-emerald-800 underline">Unlock ›</span>
                 </div>
               </div>
             )}
           </div>
 
           {/* Posted by card */}
-          <div className="p-3.5 rounded-2xl mb-6 bg-stone-50 border border-stone-200">
+          <div className="p-3.5 rounded-2xl mb-4 bg-stone-50 border border-stone-200">
             <div className="flex items-center gap-3">
               {unlocked ? (
                 <img src={listing.postedByAvatar} alt={listing.postedBy} className="w-10 h-10 rounded-full object-cover bg-stone-200 shrink-0" />
@@ -1323,7 +1501,7 @@ function ListingDetailScreen({
                 <p className="text-xs text-stone-500">Listed by</p>
                 <p className="text-sm font-bold text-stone-900 truncate">{listing.postedBy}</p>
                 {unlocked ? (
-                  <p className="text-xs text-stone-600 font-medium mt-0.5">📞 {listing.postedByPhone || '+91 99999 88888'}</p>
+                  <p className="text-xs text-stone-600 font-medium mt-0.5">📞 {listing.postedByPhone || listing.ownerPhone || '+91 99999 88888'}</p>
                 ) : (
                   <p className="text-[11px] text-stone-400 font-medium mt-0.5 select-none blur-[4px]">📞 +91 98765 43210</p>
                 )}
@@ -1332,6 +1510,73 @@ function ListingDetailScreen({
                 Active
               </div>
             </div>
+          </div>
+
+          {/* Post-Visit Brokerage Card (New Revenue System: ₹2,000) */}
+          <div className="p-3.5 rounded-2xl mb-6 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/90 shadow-xs">
+            <div className="flex items-start justify-between gap-2 mb-1.5">
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-900 bg-amber-200 px-2 py-0.5 rounded-full">
+                    Revenue Policy
+                  </span>
+                  <span className="text-[10px] font-bold text-stone-500">Payable after visit</span>
+                </div>
+                <h4 className="text-xs font-bold text-stone-900 mt-1">Post-Visit Flat Brokerage (₹2,000)</h4>
+              </div>
+              <span className="font-mono text-xs font-black text-amber-950 bg-amber-200 px-2.5 py-1 rounded-lg shrink-0">₹2,000</span>
+            </div>
+            <p className="text-[11px] text-stone-600 mb-2.5 leading-relaxed">
+              Under Nestly's new revenue system, a flat ₹2,000 brokerage is charged after visiting the flat. You can pay securely through the app once your visit is completed.
+            </p>
+
+            {brokeragePaidState || brokeragePaid ? (
+              <div className="p-3 rounded-xl bg-emerald-100 border border-emerald-300 text-xs flex items-center justify-between">
+                <div className="flex items-center gap-2 text-emerald-950 font-bold">
+                  <span>✅</span>
+                  <div>
+                    <p className="leading-tight">₹2,000 Brokerage Paid via App</p>
+                    <p className="text-[10px] text-emerald-700 font-normal">Receipt #BRK-{listing.id.slice(-6).toUpperCase()} · Confirmed</p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold text-emerald-800 bg-white/80 px-2 py-0.5 rounded-md">Paid</span>
+              </div>
+            ) : visitedState || visited ? (
+              <div className="space-y-2">
+                <div className="p-2.5 rounded-xl bg-amber-100/90 border border-amber-300 text-xs flex items-center justify-between text-amber-950 font-medium">
+                  <div className="flex items-center gap-1.5">
+                    <span>📍</span>
+                    <span>Flat visited · Brokerage due: ₹2,000</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-amber-800 bg-amber-200 px-2 py-0.5 rounded-full">Due</span>
+                </div>
+                <button
+                  onClick={() => setShowBrokerModal(true)}
+                  className="w-full py-2.5 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-xs font-bold shadow-sm active:scale-98 transition-transform flex items-center justify-center gap-1.5"
+                >
+                  <span>💳 Pay ₹2,000 Brokerage via Razorpay</span>
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setVisitedState(true)
+                    onMarkVisited?.(listing.id)
+                    setVoucherToastMsg('📍 Flat marked as visited! You can now pay the ₹2,000 brokerage via app.')
+                  }}
+                  className="flex-1 py-2.5 rounded-xl bg-white border border-stone-300 hover:bg-stone-50 text-stone-800 text-xs font-bold active:scale-98 transition-transform flex items-center justify-center gap-1"
+                >
+                  <span>✅ Mark Visited</span>
+                </button>
+                <button
+                  onClick={() => setShowBrokerModal(true)}
+                  className="flex-1 py-2.5 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-xs font-bold shadow-sm active:scale-98 transition-transform flex items-center justify-center gap-1"
+                >
+                  <span>💳 Pay ₹2,000</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -1350,24 +1595,86 @@ function ListingDetailScreen({
               🏠 Your Listing
             </span>
           ) : unlocked ? (
-            <button
-              onClick={onChat}
-              className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold text-white active:scale-95 transition-transform"
-              style={{ background: '#1a3d2b' }}
-            >
-              <ChatIcon active={false} />
-              Chat with lister
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onChat}
+                className="flex items-center gap-1.5 px-4 py-3 rounded-xl text-xs font-semibold text-white active:scale-95 transition-transform"
+                style={{ background: '#1a3d2b' }}
+              >
+                <ChatIcon active={false} />
+                <span>Chat</span>
+              </button>
+              {!(brokeragePaidState || brokeragePaid) && (
+                <button
+                  onClick={() => setShowBrokerModal(true)}
+                  className="flex items-center gap-1 px-3.5 py-3 rounded-xl text-xs font-bold text-amber-950 bg-amber-400 hover:bg-amber-500 shadow-sm active:scale-95 transition-transform"
+                >
+                  <span>Pay ₹2k Brokerage</span>
+                </button>
+              )}
+            </div>
           ) : (
             <button
-              onClick={handleTriggerPay}
+              onClick={handleViewListerDetails}
               className="flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-bold text-white bg-[#1a3d2b] shadow-lg shadow-[#1a3d2b]/20 active:scale-95 transition-transform"
             >
-              <span>💳 Pay to unlock (₹{unlockFee.toLocaleString()})</span>
+              {passVouchers > 0 ? (
+                <span>👁️ View Lister (1 Token)</span>
+              ) : (
+                <span>🎫 View Lister · Buy Tokens</span>
+              )}
             </button>
           )}
         </div>
       </div>
+
+      {/* Confirmation Toast/Modal when user has a token and clicks View Lister Details */}
+      {showVoucherConfirmModal && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-800 flex items-center justify-center mx-auto mb-3.5 text-2xl font-bold shadow-inner">
+              🪙
+            </div>
+            <h3 className="text-base font-bold text-center text-stone-900 mb-2">
+              Use 1 Token for this Flat?
+            </h3>
+            <div className="bg-stone-50 rounded-2xl p-3.5 border border-stone-200 mb-4 text-center">
+              <p className="text-xs text-stone-700 leading-relaxed">
+                You currently have <span className="font-bold text-emerald-800">{passVouchers} token{passVouchers > 1 ? 's' : ''}</span>. Using 1 token unlocks the lister's direct phone number, full address, and allows you to visit the flat.
+              </p>
+              <p className="text-[11px] text-stone-500 mt-2 font-medium bg-amber-50 p-2 rounded-xl border border-amber-200">
+                🤝 Note: Under the new revenue system, a flat ₹2,000 brokerage is payable through the app after your visit.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2.5">
+              <button
+                onClick={async () => {
+                  setIsDeductingVoucher(true)
+                  try {
+                    await onUseVoucher(listing.id)
+                    setShowVoucherConfirmModal(false)
+                    setUnlockedState(true)
+                    setVoucherToastMsg(`🎉 1 Token applied! You have ${passVouchers - 1} token${passVouchers - 1 === 1 ? '' : 's'} remaining.`)
+                  } finally {
+                    setIsDeductingVoucher(false)
+                  }
+                }}
+                disabled={isDeductingVoucher}
+                className="w-full py-3 rounded-xl bg-[#1a3d2b] text-white text-xs font-bold shadow-md active:scale-98 transition-all flex items-center justify-center gap-2"
+              >
+                {isDeductingVoucher ? 'Unlocking Details...' : 'Yes, Use 1 Token'}
+              </button>
+              <button
+                onClick={() => setShowVoucherConfirmModal(false)}
+                disabled={isDeductingVoucher}
+                className="w-full py-2.5 rounded-xl bg-stone-100 text-stone-700 text-xs font-semibold hover:bg-stone-200 active:scale-98 transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modals */}
       {showMapModal && (
@@ -1382,16 +1689,398 @@ function ListingDetailScreen({
         />
       )}
 
-      {showRazorpay && (
+      {showBrokerModal && (
         <RazorpayCheckoutModal
-          listing={listing}
-          feeAmount={unlockFee}
-          onSuccess={() => {
-            setShowRazorpay(false)
-            setUnlockedState(true)
-            onUnlock(listing.id)
+          title={`Post-Visit Brokerage: ${listing.title}`}
+          subtitle="Flat Visit Brokerage · ₹2,000"
+          amount={2000}
+          benefits={[
+            'Official ₹2,000 brokerage fee settlement for this property',
+            'Full visit verification & landlord confirmation',
+            'Direct rent agreement assistance & digital receipt',
+            'Seamless move-in facilitation'
+          ]}
+          onSuccess={async () => {
+            if (onPayBrokerage) {
+              await onPayBrokerage(listing.id)
+            } else {
+              await onBookBroker()
+            }
+            setBrokeragePaidState(true)
+            setVisitedState(true)
+            setShowBrokerModal(false)
+            setVoucherToastMsg('🎉 ₹2,000 Brokerage paid successfully! Receipt recorded in app.')
           }}
-          onClose={() => setShowRazorpay(false)}
+          onClose={() => setShowBrokerModal(false)}
+        />
+      )}
+    </div>
+  )
+}
+function PassScreen({
+  passVouchers,
+  hasBrokerService = false,
+  onBack,
+  onBuyPass,
+  onBookBroker,
+  onViewListing,
+  unlockedListings = {},
+  visitedListings = {},
+  brokeragePaidListings = {},
+  listings = [],
+  onMarkVisited,
+  onPayBrokerage,
+  onListingClick
+}: {
+  passVouchers: number
+  hasBrokerService?: boolean
+  onBack: () => void
+  onBuyPass: (plan: PassPlan) => Promise<void>
+  onBookBroker?: () => Promise<void>
+  onViewListing?: () => void
+  unlockedListings?: Record<string, boolean>
+  visitedListings?: Record<string, boolean>
+  brokeragePaidListings?: Record<string, { paid: boolean; paidAt?: string; txnId?: string }>
+  listings?: Listing[]
+  onMarkVisited?: (listingId: string) => void
+  onPayBrokerage?: (listingId: string) => Promise<void>
+  onListingClick?: (listing: Listing) => void
+}) {
+  const [selectedPlan, setSelectedPlan] = useState<PassPlan>(PASS_PLANS[1]) // Default to 599
+  const [checkoutData, setCheckoutData] = useState<{
+    open: boolean
+    title: string
+    subtitle: string
+    amount: number
+    benefits?: string[]
+    onSuccess: () => Promise<void>
+  } | null>(null)
+  const [passToast, setPassToast] = useState('')
+
+  const unlockedFlats = listings.filter(l => unlockedListings[l.id])
+
+  const handlePayPlan = (plan: PassPlan) => {
+    setSelectedPlan(plan)
+    setCheckoutData({
+      open: true,
+      title: `${plan.name} (${plan.tokens || plan.views} Tokens)`,
+      subtitle: `Nestly ${plan.tokens || plan.views} Flat Unlock Tokens`,
+      amount: plan.price,
+      benefits: [
+        `Unlock ${plan.tokens || plan.views} complete flat lister details`,
+        'Direct owner/lister mobile number & call access',
+        'Exact street address & interactive map navigation',
+        'Direct chat with property posters',
+        'Permission to arrange & visit the flat',
+        'Standard ₹2,000 brokerage payable in-app after visit'
+      ],
+      onSuccess: async () => {
+        await onBuyPass(plan)
+        setCheckoutData(null)
+        setPassToast(`🎉 Success! ${plan.tokens || plan.views} flat tokens added to your wallet.`)
+        setTimeout(() => setPassToast(''), 4500)
+      }
+    })
+  }
+
+  const handlePayBrokerageForListing = (listingId?: string, listingTitle?: string) => {
+    setCheckoutData({
+      open: true,
+      title: listingTitle ? `Brokerage: ${listingTitle}` : 'Post-Visit Flat Brokerage',
+      subtitle: 'Flat Visit Brokerage Fee · ₹2,000',
+      amount: 2000,
+      benefits: [
+        'Official ₹2,000 flat brokerage settlement',
+        'Full physical visit verification & record',
+        'Assistance with rent negotiation & legal agreement',
+        'Instant digital payment receipt & move-in clearance'
+      ],
+      onSuccess: async () => {
+        if (listingId && onPayBrokerage) {
+          await onPayBrokerage(listingId)
+        } else if (onBookBroker) {
+          await onBookBroker()
+        }
+        setCheckoutData(null)
+        setPassToast('🎉 ₹2,000 Brokerage paid successfully! Receipt generated.')
+        setTimeout(() => setPassToast(''), 4500)
+      }
+    })
+  }
+
+  return (
+    <div className="flex flex-col h-full bg-[#f7f5f1] relative">
+      {/* Toast Notification */}
+      {passToast && (
+        <div className="bg-emerald-800 text-white text-xs font-bold px-4 py-3 flex items-center justify-between shadow-lg animate-in slide-in-from-top z-30">
+          <span>{passToast}</span>
+          <button onClick={() => setPassToast('')} className="text-white font-bold ml-2">✕</button>
+        </div>
+      )}
+
+      {/* Sticky Top Bar */}
+      <div className="shrink-0 px-4 pt-12 pb-3 bg-white border-b border-[#e2ddd8] flex items-center justify-between z-10">
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={onBack}
+            className="w-9 h-9 rounded-full bg-stone-100 flex items-center justify-center text-stone-700 active:scale-95 transition-transform"
+          >
+            <BackIcon />
+          </button>
+          <div>
+            <h1 className="text-base font-bold text-stone-900 leading-none">Premium Payment</h1>
+            <p className="text-[11px] text-stone-500 mt-0.5 font-medium">Flat Tokens & Post-Visit Brokerage</p>
+          </div>
+        </div>
+        <div className="px-3 py-1 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-950 text-xs font-bold flex items-center gap-1.5 shadow-xs">
+          <span>🪙</span>
+          <span>{passVouchers} {passVouchers === 1 ? 'Token' : 'Tokens'}</span>
+        </div>
+      </div>
+
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Token Balance Card */}
+        <div className="p-4 rounded-3xl bg-gradient-to-br from-[#1a3d2b] to-[#11291d] text-white shadow-lg relative overflow-hidden">
+          <div className="absolute right-[-15px] bottom-[-20px] text-7xl opacity-10 pointer-events-none font-bold">
+            🪙
+          </div>
+          <div className="flex items-start justify-between relative z-10">
+            <div>
+              <span className="text-[10px] uppercase tracking-wider font-extrabold text-emerald-300 bg-white/10 px-2 py-0.5 rounded-full">
+                Your Token Wallet
+              </span>
+              <h2 className="text-3xl font-bold mt-1.5 flex items-baseline gap-2">
+                <span>{passVouchers}</span>
+                <span className="text-xs font-normal text-emerald-200">flat tokens available</span>
+              </h2>
+              <p className="text-xs text-emerald-100/90 mt-1 max-w-[260px] leading-relaxed">
+                {passVouchers > 0
+                  ? 'Each token reveals 1 flat lister phone number & address to contact and visit.'
+                  : 'You have 0 tokens. Choose a plan below to reveal lister phone numbers and visit flats.'}
+              </p>
+            </div>
+          </div>
+          {passVouchers > 0 && onViewListing && (
+            <button
+              onClick={onViewListing}
+              className="mt-3.5 w-full py-2.5 rounded-xl bg-white text-[#1a3d2b] text-xs font-bold shadow-sm active:scale-98 transition-transform"
+            >
+              Continue to Flat Details →
+            </button>
+          )}
+        </div>
+
+        {/* ── Explainer: The New Revenue System ── */}
+        <div className="p-4 rounded-2xl bg-white border border-stone-200 shadow-xs">
+          <div className="flex items-center gap-1.5 mb-2.5">
+            <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+              New Revenue Model
+            </span>
+            <span className="text-xs font-bold text-stone-900">How It Works</span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-200/80">
+              <div className="text-xl mb-1">🪙</div>
+              <p className="text-[11px] font-bold text-stone-900">1. Buy Tokens</p>
+              <p className="text-[10px] text-stone-500 mt-0.5">₹499 (6), ₹599 (7), or ₹699 (10)</p>
+            </div>
+            <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-200/80">
+              <div className="text-xl mb-1">📞</div>
+              <p className="text-[11px] font-bold text-stone-900">2. View & Visit</p>
+              <p className="text-[10px] text-stone-500 mt-0.5">Get lister phone, contact & visit flat</p>
+            </div>
+            <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200/80">
+              <div className="text-xl mb-1">🤝</div>
+              <p className="text-[11px] font-bold text-amber-950">3. ₹2,000 Fee</p>
+              <p className="text-[10px] text-amber-800 mt-0.5">Pay brokerage via app after visiting</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Section title */}
+        <div>
+          <h3 className="text-sm font-bold text-stone-900">Choose Your Token Plan</h3>
+          <p className="text-[11px] text-stone-500 font-medium">Select how many flat unlock tokens you want to get started</p>
+        </div>
+
+        {/* 3 Token Plans: 499 (6 tokens), 599 (7 tokens), 699 (10 tokens) */}
+        <div className="space-y-3">
+          {PASS_PLANS.map(plan => {
+            const isSelected = selectedPlan.id === plan.id
+            const isPopular = plan.popular
+            const tokenCount = plan.tokens || plan.views
+            return (
+              <div
+                key={plan.id}
+                onClick={() => setSelectedPlan(plan)}
+                className={`p-4 rounded-2xl border-2 transition-all cursor-pointer relative bg-white ${
+                  isPopular 
+                    ? 'border-emerald-700 shadow-md ring-2 ring-emerald-700/10' 
+                    : isSelected 
+                    ? 'border-stone-800 shadow-sm' 
+                    : 'border-stone-200 hover:border-stone-300'
+                }`}
+              >
+                {plan.badge && (
+                  <span className={`absolute top-3 right-3 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full ${
+                    isPopular 
+                      ? 'bg-amber-400 text-stone-950 shadow-xs' 
+                      : 'bg-stone-100 text-stone-700'
+                  }`}>
+                    {plan.badge}
+                  </span>
+                )}
+
+                <div className="flex items-start justify-between pr-20 mb-2">
+                  <div>
+                    <h4 className="text-sm font-bold text-stone-900">{plan.name}</h4>
+                    <p className="text-xs text-emerald-800 font-bold mt-0.5">
+                      🪙 {tokenCount} Flat Unlock Tokens
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-baseline gap-2 mb-3">
+                  <span className="font-mono text-2xl font-black text-stone-900">₹{plan.price}</span>
+                  <span className="text-xs text-stone-500 font-medium">
+                    (₹{plan.pricePerView} per flat token)
+                  </span>
+                </div>
+
+                <div className="space-y-1.5 mb-3.5 text-xs text-stone-600">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-emerald-600 font-bold">✓</span>
+                    <span>Unlock {tokenCount} flat lister phone numbers & names</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-emerald-600 font-bold">✓</span>
+                    <span>Direct call, WhatsApp & in-app chat</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-emerald-600 font-bold">✓</span>
+                    <span>Exact street address & map navigation to visit</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-amber-800 font-bold">•</span>
+                    <span className="text-stone-700 font-medium">₹2,000 standard flat brokerage payable post-visit via app</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handlePayPlan(plan)
+                  }}
+                  className={`w-full py-2.5 rounded-xl text-xs font-bold shadow-sm active:scale-98 transition-transform flex items-center justify-center gap-1.5 ${
+                    isPopular 
+                      ? 'bg-[#1a3d2b] text-white hover:bg-emerald-900' 
+                      : 'bg-stone-900 text-white hover:bg-stone-800'
+                  }`}
+                >
+                  <span>Pay ₹{plan.price} for {tokenCount} Tokens</span>
+                </button>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* ── Post-Visit Brokerage Payment Section (₹2,000) ── */}
+        <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-100/70 border-2 border-amber-300 shadow-sm relative overflow-hidden">
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <div>
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-900 bg-amber-200 px-2 py-0.5 rounded-full">
+                Post-Visit Brokerage
+              </span>
+              <h4 className="text-sm font-bold text-stone-900 mt-1">Pay Flat Brokerage (₹2,000)</h4>
+              <p className="text-[11px] text-amber-900 font-medium mt-0.5">
+                Payable directly through the app after your property visit
+              </p>
+            </div>
+            <span className="font-mono text-xl font-black text-amber-950 bg-amber-200/90 px-3 py-1 rounded-xl shrink-0">
+              ₹2,000
+            </span>
+          </div>
+
+          <p className="text-xs text-stone-700 leading-relaxed mb-3">
+            Have you completed a physical flat visit? Under our revenue policy, a flat ₹2,000 brokerage is charged per visited property. You can pay securely through Razorpay right here in the app.
+          </p>
+
+          {/* List of Unlocked Flats and their Visit / Brokerage Payment Status */}
+          {unlockedFlats.length > 0 && (
+            <div className="space-y-2 mb-3">
+              <p className="text-xs font-bold text-stone-800">Your Unlocked Properties:</p>
+              {unlockedFlats.map(flat => {
+                const isPaid = brokeragePaidListings[flat.id]?.paid
+                const isVisited = visitedListings[flat.id]
+                return (
+                  <div key={flat.id} className="p-3 bg-white rounded-xl border border-amber-200 flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold text-stone-900 truncate">{flat.title}</p>
+                      <p className="text-[10px] text-stone-500 truncate">{flat.area}, {flat.town}</p>
+                    </div>
+                    {isPaid ? (
+                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-1 rounded-md shrink-0">
+                        Paid ₹2,000 ✅
+                      </span>
+                    ) : (
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {!isVisited && (
+                          <button
+                            onClick={() => {
+                              onMarkVisited?.(flat.id)
+                              setPassToast(`📍 Marked "${flat.title}" as visited!`)
+                            }}
+                            className="px-2 py-1 rounded-lg bg-stone-100 text-stone-700 text-[10px] font-bold border border-stone-300 active:scale-95"
+                          >
+                            Mark Visited
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handlePayBrokerageForListing(flat.id, flat.title)}
+                          className="px-2.5 py-1 rounded-lg bg-amber-700 text-white text-[10px] font-bold shadow-xs active:scale-95"
+                        >
+                          Pay ₹2k
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          <button
+            onClick={() => handlePayBrokerageForListing()}
+            className="w-full py-3 rounded-xl bg-amber-800 hover:bg-amber-900 text-white text-xs font-bold shadow-md active:scale-98 transition-transform flex items-center justify-center gap-1.5"
+          >
+            <span>💳 Pay ₹2,000 Post-Visit Brokerage via App</span>
+          </button>
+        </div>
+
+        {/* Why Nestly Revenue System */}
+        <div className="p-4 rounded-2xl bg-white border border-stone-200">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-stone-500 mb-2">
+            Why Nestly's Revenue System?
+          </h4>
+          <div className="space-y-2 text-xs text-stone-600">
+            <p>• <b>Direct Lister Phone:</b> 1 token reveals complete phone number and owner details without middleman markup.</p>
+            <p>• <b>Visit First, Pay Later:</b> Pay the ₹2,000 flat brokerage only after you visit the flat.</p>
+            <p>• <b>App Convenience:</b> Integrated Razorpay gateway provides instant verification and receipts.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Checkout Modal */}
+      {checkoutData && (
+        <RazorpayCheckoutModal
+          title={checkoutData.title}
+          subtitle={checkoutData.subtitle}
+          amount={checkoutData.amount}
+          benefits={checkoutData.benefits}
+          onSuccess={checkoutData.onSuccess}
+          onClose={() => setCheckoutData(null)}
         />
       )}
     </div>
@@ -2176,6 +2865,8 @@ function ProfileScreen({
   userProfile, 
   listings, 
   conversations,
+  passVouchers = 0,
+  hasBrokerService = false,
   onUpdateProfile,
   onSignOut,
   onAuthTrigger,
@@ -2190,6 +2881,8 @@ function ProfileScreen({
   userProfile: any; 
   listings: Listing[]; 
   conversations: Conversation[];
+  passVouchers?: number;
+  hasBrokerService?: boolean;
   onUpdateProfile: (profile: any) => Promise<void>;
   onSignOut: () => void;
   onAuthTrigger: () => void;
@@ -2394,6 +3087,50 @@ function ProfileScreen({
               <p className="text-xs" style={{ color: '#7a7570' }}>{label}</p>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Nestly Premium & Tokens Card */}
+      {!isEditMode && (
+        <div className="mx-4 mb-6 p-4 rounded-3xl bg-gradient-to-br from-[#1a3d2b] to-[#11291d] text-white shadow-md relative overflow-hidden">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center text-xl shadow-inner">
+                🪙
+              </div>
+              <div>
+                <h3 className="text-sm font-bold leading-tight">Nestly Premium & Tokens</h3>
+                <p className="text-[11px] text-emerald-200">Lister contact access & flat visits</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <span className="font-mono text-2xl font-black text-amber-300">{passVouchers}</span>
+              <p className="text-[9px] text-emerald-200 uppercase font-bold tracking-wider">Tokens Left</p>
+            </div>
+          </div>
+
+          <div className="mb-3 py-2 px-3 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-1.5">
+              <span>🤝</span>
+              <span className="text-emerald-100 font-medium">Standard ₹2,000 Brokerage Post-Visit</span>
+            </div>
+            <span className="text-[10px] font-bold text-amber-300 bg-amber-950/60 px-2 py-0.5 rounded-full">New Policy</span>
+          </div>
+
+          <div className="pt-2.5 border-t border-white/15 flex items-center gap-2">
+            <button
+              onClick={() => onScreenNav?.('pass')}
+              className="flex-1 py-2.5 rounded-xl bg-white text-[#1a3d2b] text-xs font-bold shadow-sm active:scale-98 transition-transform text-center"
+            >
+              {passVouchers > 0 ? '+ Add More Tokens' : '⚡ Buy Tokens (from ₹499)'}
+            </button>
+            <button
+              onClick={() => onScreenNav?.('pass')}
+              className="py-2.5 px-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 text-xs font-bold active:scale-98 transition-transform"
+            >
+              Pay Brokerage (₹2k)
+            </button>
+          </div>
         </div>
       )}
 
@@ -4306,6 +5043,33 @@ export default function App() {
     }
   })
 
+  const [tokens, setTokens] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('nestly_tokens')
+      return saved ? parseInt(saved, 10) : 0
+    } catch (e) {
+      return 0
+    }
+  })
+
+  const [visitedListings, setVisitedListings] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem('nestly_visited_listings')
+      return saved ? JSON.parse(saved) : {}
+    } catch (e) {
+      return {}
+    }
+  })
+
+  const [brokeragePaidListings, setBrokeragePaidListings] = useState<Record<string, { paid: boolean; paidAt?: string; txnId?: string }>>(() => {
+    try {
+      const saved = localStorage.getItem('nestly_brokerage_paid')
+      return saved ? JSON.parse(saved) : {}
+    } catch (e) {
+      return {}
+    }
+  })
+
   const handleUnlockListing = (id: string) => {
     setUnlockedListings(prev => {
       const next = { ...prev, [id]: true }
@@ -4314,6 +5078,75 @@ export default function App() {
       } catch (e) {}
       return next
     })
+  }
+
+  const handleBuyPlan = async (plan: PassPlan) => {
+    const addTokens = plan.tokens || plan.views || 6
+    const nextTokens = tokens + addTokens
+    setTokens(nextTokens)
+    try {
+      localStorage.setItem('nestly_tokens', nextTokens.toString())
+      if (user && !user.isAnonymous) {
+        await updateDoc(doc(firestore, 'profiles', user.uid), { tokens: nextTokens })
+      }
+    } catch (e) {}
+  }
+
+  const handleUseToken = async (id: string) => {
+    if (tokens <= 0) return false
+    const nextTokens = Math.max(0, tokens - 1)
+    setTokens(nextTokens)
+    const nextUnlocked = { ...unlockedListings, [id]: true }
+    setUnlockedListings(nextUnlocked)
+    try {
+      localStorage.setItem('nestly_tokens', nextTokens.toString())
+      localStorage.setItem('nestly_unlocked_listings', JSON.stringify(nextUnlocked))
+      if (user && !user.isAnonymous) {
+        await updateDoc(doc(firestore, 'profiles', user.uid), {
+          tokens: nextTokens,
+          unlockedListings: nextUnlocked
+        })
+      }
+    } catch (e) {}
+    return true
+  }
+
+  const handleMarkVisited = async (id: string) => {
+    const nextVisited = { ...visitedListings, [id]: true }
+    setVisitedListings(nextVisited)
+    try {
+      localStorage.setItem('nestly_visited_listings', JSON.stringify(nextVisited))
+      if (user && !user.isAnonymous) {
+        await updateDoc(doc(firestore, 'profiles', user.uid), {
+          visitedListings: nextVisited
+        })
+      }
+    } catch (e) {}
+  }
+
+  const handlePayBrokerage = async (id?: string) => {
+    const flatKey = id || 'general'
+    const nextPaid = {
+      ...brokeragePaidListings,
+      [flatKey]: {
+        paid: true,
+        paidAt: new Date().toISOString(),
+        txnId: 'BRK-' + Math.random().toString(36).substring(2, 9).toUpperCase()
+      }
+    }
+    const nextVisited = id ? { ...visitedListings, [id]: true } : visitedListings
+    setBrokeragePaidListings(nextPaid)
+    if (id) setVisitedListings(nextVisited)
+    try {
+      localStorage.setItem('nestly_brokerage_paid', JSON.stringify(nextPaid))
+      if (id) localStorage.setItem('nestly_visited_listings', JSON.stringify(nextVisited))
+      if (user && !user.isAnonymous) {
+        await updateDoc(doc(firestore, 'profiles', user.uid), {
+          brokeragePaidListings: nextPaid,
+          ...(id ? { visitedListings: nextVisited } : {})
+        })
+      }
+    } catch (e) {}
   }
 
   const getOrCreateGuestUser = () => {
@@ -4379,7 +5212,21 @@ export default function App() {
           const profileDocRef = doc(firestore, 'profiles', authUser.uid)
           onSnapshot(profileDocRef, (snapshot) => {
             if (snapshot.exists()) {
-              setUserProfile(snapshot.data())
+              const pData = snapshot.data()
+              setUserProfile(pData)
+              if (typeof pData.tokens === 'number') {
+                setTokens(pData.tokens)
+                try { localStorage.setItem('nestly_tokens', pData.tokens.toString()) } catch (e) {}
+              }
+              if (pData.unlockedListings) {
+                setUnlockedListings(prev => ({ ...prev, ...pData.unlockedListings }))
+              }
+              if (pData.visitedListings) {
+                setVisitedListings(prev => ({ ...prev, ...pData.visitedListings }))
+              }
+              if (pData.brokeragePaidListings) {
+                setBrokeragePaidListings(prev => ({ ...prev, ...pData.brokeragePaidListings }))
+              }
             } else {
               const defaultProfile = {
                 name: authUser.displayName || (authUser.email ? authUser.email.split('@')[0] : 'User'),
@@ -4668,7 +5515,12 @@ export default function App() {
     >
       <div className="flex-1 overflow-hidden relative">
         {screen === 'home' && (
-          <HomeScreen listings={activeListings} onListingClick={handleListingClick} />
+          <HomeScreen
+            listings={activeListings}
+            onListingClick={handleListingClick}
+            passVouchers={tokens}
+            onGoToPass={() => setScreen('pass')}
+          />
         )}
         {screen === 'explore' && (
           <ExploreScreen listings={activeListings} onListingClick={handleListingClick} />
@@ -4767,6 +5619,8 @@ export default function App() {
             userProfile={userProfile}
             listings={listings}
             conversations={conversations}
+            passVouchers={tokens}
+            hasBrokerService={Object.values(brokeragePaidListings).some(b => b?.paid)}
             onUpdateProfile={handleUpdateProfile}
             onSignOut={handleSignOut}
             onAuthTrigger={() => setScreen('auth')}
@@ -4798,6 +5652,15 @@ export default function App() {
               listing={selectedListing}
               isUnlocked={isAdmin || Boolean(user?.uid && selectedListing.postedByUid && selectedListing.postedByUid === user.uid) || !!unlockedListings[selectedListing.id]}
               onUnlock={handleUnlockListing}
+              passVouchers={tokens}
+              hasBrokerService={!!brokeragePaidListings[selectedListing.id]?.paid}
+              visited={!!visitedListings[selectedListing.id]}
+              brokeragePaid={!!brokeragePaidListings[selectedListing.id]?.paid}
+              onMarkVisited={handleMarkVisited}
+              onPayBrokerage={handlePayBrokerage}
+              onGoToPass={() => setScreen('pass')}
+              onUseVoucher={handleUseToken}
+              onBookBroker={async () => { await handlePayBrokerage(selectedListing.id) }}
               user={user}
               userProfile={userProfile}
               onBack={() => setScreen(navTab)}
@@ -4840,6 +5703,29 @@ export default function App() {
               <p className="text-sm font-semibold text-stone-600">Loading space details...</p>
             </div>
           )
+        )}
+        {(screen === 'pass' || screen === 'premium') && (
+          <PassScreen
+            passVouchers={tokens}
+            hasBrokerService={Object.values(brokeragePaidListings).some(b => b?.paid)}
+            onBack={() => setScreen(navTab)}
+            onBuyPass={handleBuyPlan}
+            onBookBroker={async () => { await handlePayBrokerage() }}
+            unlockedListings={unlockedListings}
+            visitedListings={visitedListings}
+            brokeragePaidListings={brokeragePaidListings}
+            listings={listings}
+            onMarkVisited={handleMarkVisited}
+            onPayBrokerage={handlePayBrokerage}
+            onListingClick={handleListingClick}
+            onViewListing={() => {
+              if (selectedListing) {
+                setScreen('listing-detail')
+              } else {
+                setScreen('home')
+              }
+            }}
+          />
         )}
         {screen === 'auth' && (
           <AuthScreen 
