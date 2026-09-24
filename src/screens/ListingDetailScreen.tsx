@@ -301,72 +301,71 @@ export function ListingDetailScreen({
             </div>
           </div>
 
-          {/* Post-Visit Brokerage Card (New Revenue System: ₹2,000) */}
-          <div className="p-3.5 rounded-2xl mb-6 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/90 shadow-xs">
-            <div className="flex items-start justify-between gap-2 mb-1.5">
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-900 bg-amber-200 px-2 py-0.5 rounded-full">
-                    Revenue Policy
-                  </span>
-                  <span className="text-[10px] font-bold text-stone-500">Payable after visit</span>
-                </div>
-                <h4 className="text-xs font-bold text-stone-900 mt-1">Post-Visit Flat Brokerage (₹2,000)</h4>
-              </div>
-              <span className="font-mono text-xs font-black text-amber-950 bg-amber-200 px-2.5 py-1 rounded-lg shrink-0">₹2,000</span>
-            </div>
-            <p className="text-[11px] text-stone-600 mb-2.5 leading-relaxed">
-              Under Nestly's new revenue system, a flat ₹2,000 brokerage is charged after visiting the flat. You can pay securely through the app once your visit is completed.
-            </p>
-
-            {brokeragePaidState || brokeragePaid ? (
-              <div className="p-3 rounded-xl bg-emerald-100 border border-emerald-300 text-xs flex items-center justify-between">
-                <div className="flex items-center gap-2 text-emerald-950 font-bold">
-                  <span>✅</span>
-                  <div>
-                    <p className="leading-tight">₹2,000 Brokerage Paid via App</p>
-                    <p className="text-[10px] text-emerald-700 font-normal">Receipt #BRK-{listing.id.slice(-6).toUpperCase()} · Confirmed</p>
-                  </div>
-                </div>
-                <span className="text-[10px] font-bold text-emerald-800 bg-white/80 px-2 py-0.5 rounded-md">Paid</span>
-              </div>
-            ) : visitedState || visited ? (
-              <div className="space-y-2">
-                <div className="p-2.5 rounded-xl bg-amber-100/90 border border-amber-300 text-xs flex items-center justify-between text-amber-950 font-medium">
+          {/* Post-Visit Brokerage Card (Shown to users who have used 1 token to view details) */}
+          {unlocked && !isOwner && (
+            <div className="p-3.5 rounded-2xl mb-6 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/90 shadow-xs">
+              <div className="flex items-start justify-between gap-2 mb-2.5">
+                <div>
                   <div className="flex items-center gap-1.5">
-                    <span>📍</span>
-                    <span>Flat visited · Brokerage due: ₹2,000</span>
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-900 bg-amber-200 px-2 py-0.5 rounded-full">
+                      Revenue Policy
+                    </span>
+                    <span className="text-[10px] font-bold text-stone-500">Payable after visit</span>
                   </div>
-                  <span className="text-[10px] font-bold text-amber-800 bg-amber-200 px-2 py-0.5 rounded-full">Due</span>
+                  <h4 className="text-xs font-bold text-stone-900 mt-1">Post-Visit Flat Brokerage (₹2,000)</h4>
                 </div>
-                <button
-                  onClick={() => setShowBrokerModal(true)}
-                  className="w-full py-2.5 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-xs font-bold shadow-sm active:scale-98 transition-transform flex items-center justify-center gap-1.5"
-                >
-                  <span>💳 Pay ₹2,000 Brokerage via Razorpay</span>
-                </button>
+                <span className="font-mono text-xs font-black text-amber-950 bg-amber-200 px-2.5 py-1 rounded-lg shrink-0">₹2,000</span>
               </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    setVisitedState(true)
-                    onMarkVisited?.(listing.id)
-                    setVoucherToastMsg('📍 Flat marked as visited! You can now pay the ₹2,000 brokerage via app.')
-                  }}
-                  className="flex-1 py-2.5 rounded-xl bg-white border border-stone-300 hover:bg-stone-50 text-stone-800 text-xs font-bold active:scale-98 transition-transform flex items-center justify-center gap-1"
-                >
-                  <span>✅ Mark Visited</span>
-                </button>
-                <button
-                  onClick={() => setShowBrokerModal(true)}
-                  className="flex-1 py-2.5 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-xs font-bold shadow-sm active:scale-98 transition-transform flex items-center justify-center gap-1"
-                >
-                  <span>💳 Pay ₹2,000</span>
-                </button>
-              </div>
-            )}
-          </div>
+
+              {brokeragePaidState || brokeragePaid ? (
+                <div className="p-3 rounded-xl bg-emerald-100 border border-emerald-300 text-xs flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-emerald-950 font-bold">
+                    <span>✅</span>
+                    <div>
+                      <p className="leading-tight">₹2,000 Brokerage Paid via App</p>
+                      <p className="text-[10px] text-emerald-700 font-normal">Receipt #BRK-{listing.id.slice(-6).toUpperCase()} · Confirmed</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold text-emerald-800 bg-white/80 px-2 py-0.5 rounded-md">Paid</span>
+                </div>
+              ) : visitedState || visited ? (
+                <div className="space-y-2">
+                  <div className="p-2.5 rounded-xl bg-amber-100/90 border border-amber-300 text-xs flex items-center justify-between text-amber-950 font-medium">
+                    <div className="flex items-center gap-1.5">
+                      <span>📍</span>
+                      <span>Flat visited · Brokerage due: ₹2,000</span>
+                    </div>
+                    <span className="text-[10px] font-bold text-amber-800 bg-amber-200 px-2 py-0.5 rounded-full">Due</span>
+                  </div>
+                  <button
+                    onClick={() => setShowBrokerModal(true)}
+                    className="w-full py-2.5 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-xs font-bold shadow-sm active:scale-98 transition-transform flex items-center justify-center gap-1.5"
+                  >
+                    <span>💳 Pay ₹2,000 Brokerage via Razorpay</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setVisitedState(true)
+                      onMarkVisited?.(listing.id)
+                      setVoucherToastMsg('📍 Flat marked as visited! You can now pay the ₹2,000 brokerage via app.')
+                    }}
+                    className="flex-1 py-2.5 rounded-xl bg-white border border-stone-300 hover:bg-stone-50 text-stone-800 text-xs font-bold active:scale-98 transition-transform flex items-center justify-center gap-1"
+                  >
+                    <span>✅ Mark Visited</span>
+                  </button>
+                  <button
+                    onClick={() => setShowBrokerModal(true)}
+                    className="flex-1 py-2.5 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-xs font-bold shadow-sm active:scale-98 transition-transform flex items-center justify-center gap-1"
+                  >
+                    <span>💳 Pay ₹2,000</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
