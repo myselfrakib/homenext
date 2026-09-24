@@ -692,12 +692,16 @@ function HomeScreen({
   listings, 
   onListingClick,
   passVouchers = 0,
-  onGoToPass
+  onGoToPass,
+  myListingsCount = 0,
+  onGoToProfile
 }: { 
   listings: Listing[]; 
   onListingClick: (l: Listing) => void;
   passVouchers?: number;
   onGoToPass?: () => void;
+  myListingsCount?: number;
+  onGoToProfile?: () => void;
 }) {
   const [search, setSearch] = useState('')
   const [activeFilter, setActiveFilter] = useState<'All' | 'Studio' | '1BHK' | '2BHK' | '3BHK+'>('All')
@@ -811,33 +815,28 @@ function HomeScreen({
           </div>
         </div>
 
-        {/* ── Pass Teaser Banner ── */}
-        {onGoToPass && (
+        {/* ── My Listings Indicator (if user posted properties) ── */}
+        {myListingsCount > 0 && onGoToProfile && (
           <div className="px-4 mb-5">
             <div
-              onClick={onGoToPass}
-              className="p-3.5 rounded-2xl bg-gradient-to-r from-[#1a3d2b] to-[#25523b] text-white flex items-center justify-between shadow-sm cursor-pointer active:scale-98 transition-transform"
+              onClick={onGoToProfile}
+              className="p-3 rounded-2xl bg-white border border-stone-200/90 shadow-2xs flex items-center justify-between cursor-pointer active:scale-98 transition-transform"
             >
               <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center text-xl shrink-0">
-                  🪙
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-800 flex items-center justify-center text-sm font-bold shrink-0">
+                  🏠
                 </div>
                 <div className="min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <p className="text-xs font-bold truncate">
-                      {passVouchers > 0 ? `Nestly Premium: ${passVouchers} Tokens Left` : 'Get Flat Tokens · ₹499, ₹599, ₹699'}
-                    </p>
-                    <span className="text-[9px] bg-amber-400 text-stone-950 font-black px-1.5 py-0.2 rounded-full uppercase shrink-0">
-                      ₹2,000 Brokerage Post-Visit
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-emerald-200 mt-0.5 truncate">
-                    {passVouchers > 0 ? 'Tap to view wallet or pay post-visit brokerage' : 'Unlock lister phone, contact & schedule visits'}
+                  <p className="text-xs font-bold text-stone-900 truncate">
+                    Your Posted {myListingsCount === 1 ? 'Listing' : 'Listings'} ({myListingsCount})
+                  </p>
+                  <p className="text-[10px] text-stone-500 truncate">
+                    Moved to your Profile page · Tap to view & manage
                   </p>
                 </div>
               </div>
-              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-white/20 text-white shrink-0">
-                {passVouchers > 0 ? 'Wallet ›' : 'Plans ›'}
+              <span className="text-[11px] font-bold text-emerald-900 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg shrink-0">
+                Profile ›
               </span>
             </div>
           </div>
@@ -2936,10 +2935,15 @@ function ProfileScreen({
     }
   }, [userProfile])
 
-  const myListings = listings.filter(l => 
-    (user?.uid && l.postedByUid === user.uid) || 
-    (userProfile?.name && l.postedBy === userProfile.name)
-  )
+  const myListings = listings.filter(l => {
+    if (user?.uid && l.postedByUid && l.postedByUid === user.uid) return true
+    if (userProfile?.name && userProfile.name !== 'Guest User' && l.postedBy && l.postedBy.toLowerCase().trim() === userProfile.name.toLowerCase().trim()) return true
+    try {
+      const myIds: string[] = JSON.parse(localStorage.getItem('nestly_my_listing_ids') || '[]')
+      if (myIds.includes(l.id)) return true
+    } catch (e) {}
+    return false
+  })
 
   const handleSaveProfile = async () => {
     setLoading(true)
@@ -5499,7 +5503,19 @@ export default function App() {
     setScreen('chat-detail')
   }
 
+  const isMyListing = (l: Listing) => {
+    if (user?.uid && l.postedByUid && l.postedByUid === user.uid) return true
+    if (userProfile?.name && userProfile.name !== 'Guest User' && l.postedBy && l.postedBy.toLowerCase().trim() === userProfile.name.toLowerCase().trim()) return true
+    try {
+      const myIds: string[] = JSON.parse(localStorage.getItem('nestly_my_listing_ids') || '[]')
+      if (myIds.includes(l.id)) return true
+    } catch (e) {}
+    return false
+  }
+
   const activeListings = listings.filter(l => l.status === 'active' || !l.status)
+  const homeListings = activeListings.filter(l => !isMyListing(l))
+  const myListings = listings.filter(l => isMyListing(l))
 
   return (
     <div
@@ -5516,10 +5532,15 @@ export default function App() {
       <div className="flex-1 overflow-hidden relative">
         {screen === 'home' && (
           <HomeScreen
-            listings={activeListings}
+            listings={homeListings}
             onListingClick={handleListingClick}
             passVouchers={tokens}
             onGoToPass={() => setScreen('pass')}
+            myListingsCount={myListings.length}
+            onGoToProfile={() => {
+              setScreen('profile')
+              setNavTab('profile')
+            }}
           />
         )}
         {screen === 'explore' && (
@@ -5548,8 +5569,8 @@ export default function App() {
                 }
                 await updateDoc(doc(firestore, 'listings', editListingData.id), updatedListing)
                 setEditListingData(null)
-                setScreen('home')
-                setNavTab('home')
+                setScreen('profile')
+                setNavTab('profile')
                 return
               }
 
@@ -5595,8 +5616,12 @@ export default function App() {
               }
 
               await setDoc(newListingDoc, newListing)
-              setScreen('home')
-              setNavTab('home')
+              try {
+                const prevIds = JSON.parse(localStorage.getItem('nestly_my_listing_ids') || '[]')
+                localStorage.setItem('nestly_my_listing_ids', JSON.stringify([...prevIds, newListingDoc.id]))
+              } catch (e) {}
+              setScreen('profile')
+              setNavTab('profile')
             }}
           />
         )}
